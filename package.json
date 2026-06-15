@@ -1,0 +1,26 @@
+{
+  "name": "xxt-dl",
+  "version": "0.1.0",
+  "description": "Download visible Chaoxing/Xuexitong assignments for personal review.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build --silent && node dist/src/cli.js",
+    "clean": "npm run build --silent && node dist/src/clean-output.js",
+    "test": "npm run build --silent && node --test dist/test/*.test.js",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fs-extra": "^11.2.0",
+    "playwright": "^1.53.0",
+    "sanitize-filename": "^1.6.3",
+    "turndown": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.15.32",
+    "@types/turndown": "^5.0.5",
+    "typescript": "^5.8.3"
+  }
+}

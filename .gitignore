@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local browser profile. May contain cookies, login state, and browsing data.
+.xxt-profile/
+
+# Downloaded course/assignment content. May contain private course material.
+output/
+
+# Local noise
+.DS_Store
+*.log
