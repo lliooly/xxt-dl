@@ -3,12 +3,16 @@ node_modules/
 
 # Build output
 dist/
+/.next/
+out/
+release/
+tsconfig.tsbuildinfo
 
 # Local browser profile. May contain cookies, login state, and browsing data.
 .xxt-profile/
 
 # Downloaded course/assignment content. May contain private course material.
-output/
+/output
 
 # Local noise
 .DS_Store

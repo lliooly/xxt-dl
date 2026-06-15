@@ -55,6 +55,34 @@ npm start
 
 登录态保存在 `.xxt-profile/`，下次运行通常不需要重新登录。
 
+## 桌面端
+
+也可以启动 Electron 桌面界面：
+
+```bash
+npm run desktop
+```
+
+桌面端使用 Next.js 渲染前端，Electron 主进程在后台启动隐藏的 Playwright 浏览器。界面会显示扫码登录二维码、课程选择、作业获取进度和运行日志。输出仍然写入 `output/`，登录态仍然保存在 `.xxt-profile/`。
+
+## 打包
+
+本地打包前先把 Playwright Chromium 安装到项目依赖目录，方便打进桌面包：
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium
+```
+
+然后按平台打包：
+
+```bash
+npm run dist:mac
+npm run dist:win
+npm run dist:linux
+```
+
+产物会输出到 `release/`。GitHub Actions 里的 `Package Desktop Apps` workflow 会在 macOS、Windows、Linux runner 上分别生成 `.dmg`、`.pkg`、`.exe`、`.AppImage`、`.deb`。当前配置不做代码签名，后续可以补 Apple Developer 或 Windows 证书。
+
 ## 常用参数
 
 ```bash

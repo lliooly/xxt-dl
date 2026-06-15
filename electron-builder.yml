@@ -1,0 +1,27 @@
+appId: com.lliooly.xxtdl
+productName: XXT DL
+artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+asar: true
+npmRebuild: false
+directories:
+  output: release
+files:
+  - dist/**/*
+  - out/**/*
+  - package.json
+asarUnpack:
+  - node_modules/playwright-core/.local-browsers/**/*
+mac:
+  category: public.app-category.education
+  target:
+    - dmg
+    - pkg
+  identity: null
+win:
+  target:
+    - nsis
+linux:
+  category: Education
+  target:
+    - AppImage
+    - deb
