@@ -2,6 +2,7 @@
   "name": "xxt-dl",
   "version": "0.1.0",
   "description": "Download visible Chaoxing/Xuexitong assignments for personal review.",
+  "license": "MIT",
   "author": {
     "name": "lliooly",
     "email": "70371454+lliooly@users.noreply.github.com"
