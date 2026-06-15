@@ -13,15 +13,19 @@ asarUnpack:
   - node_modules/playwright-core/.local-browsers/**/*
 mac:
   category: public.app-category.education
+  icon: build/icon.icns
   target:
     - dmg
     - pkg
   identity: null
 win:
+  icon: build/icon.ico
   target:
     - nsis
 linux:
   category: Education
+  icon: build/icon.png
+  syncDesktopName: true
   target:
     - AppImage
     - deb

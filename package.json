@@ -2,8 +2,12 @@
   "name": "xxt-dl",
   "version": "0.1.0",
   "description": "Download visible Chaoxing/Xuexitong assignments for personal review.",
-  "author": "lliooly",
+  "author": {
+    "name": "lliooly",
+    "email": "70371454+lliooly@users.noreply.github.com"
+  },
   "main": "dist/src/desktop/main.js",
+  "desktopName": "xxt-dl",
   "type": "module",
   "private": true,
   "scripts": {
@@ -17,10 +21,10 @@
     "test": "npm run build:node --silent && node --test dist/test/*.test.js",
     "check": "tsc --noEmit",
     "pack": "npm run build --silent && electron-builder --dir",
-    "dist": "npm run build --silent && electron-builder",
-    "dist:mac": "npm run build --silent && electron-builder --mac dmg pkg",
-    "dist:win": "npm run build --silent && electron-builder --win nsis",
-    "dist:linux": "npm run build --silent && electron-builder --linux AppImage deb"
+    "dist": "npm run build --silent && electron-builder --publish never",
+    "dist:mac": "npm run build --silent && electron-builder --mac dmg pkg --publish never",
+    "dist:win": "npm run build --silent && electron-builder --win nsis --publish never",
+    "dist:linux": "npm run build --silent && electron-builder --linux AppImage deb --publish never"
   },
   "dependencies": {
     "fs-extra": "^11.2.0",
