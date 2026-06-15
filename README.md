@@ -20,6 +20,20 @@
 
 项目仍处于早期版本，主要面向个人学习资料整理场景。学习通页面结构可能调整，若出现无法识别课程或作业入口的情况，可以参考 [故障排查](#故障排查) 保存调试文件并提交 Issue。
 
+## 发展路线
+
+项目计划从「学习通作业与测验页面整理工具」逐步演进为 GUI 优先的题库归档、刷题训练与云端 Bot 练习系统。抓取能力会保留，但未来的核心会转向结构化题库、随机练习、错题复盘、AI 知识点分析和 RAG 知识库索引。
+
+近期路线见 [TODO.md](./TODO.md)。架构和仓库结构规划见 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) 与 [docs/REPOSITORY_STRUCTURE.md](./docs/REPOSITORY_STRUCTURE.md)。
+
+v1.0.0 前的重点：
+
+- GUI 完整覆盖登录、同步、题库管理、随机刷题、错题和设置。
+- CLI / TUI 锁定为开发者和自动化入口，不再承担普通用户主流程。
+- 本地 SQLite 题库成为主状态，Markdown、HTML 和 JSON 作为导出产物。
+- 支持云托管 Telegram Bot，让用户在手机端完成练习、答题反馈和错题提醒。
+- AI 与 RAG 能力在题库和练习闭环稳定后逐步接入，并提供明确的隐私开关。
+
 ## 获取方式
 
 ### 下载桌面端（推荐）
@@ -154,7 +168,16 @@ npm run build
 .
 ├── app/                  # Next.js 桌面端界面
 ├── components/           # UI 组件
+├── docs/                 # 架构、路线和仓库结构规划
 ├── src/
+│   ├── collector/        # 未来采集模块边界
+│   ├── parser/           # 未来题目解析模块边界
+│   ├── library/          # 未来本地题库模块边界
+│   ├── practice/         # 未来刷题练习模块边界
+│   ├── cloud/            # 未来云同步模块边界
+│   ├── integrations/     # 未来 Telegram Bot 等集成入口
+│   ├── exporters/        # 未来导出模块边界
+│   ├── shared/           # 未来共享类型与工具边界
 │   ├── browser.ts        # Playwright 页面读取与保存逻辑
 │   ├── clean.ts          # 题目清洗与复习材料生成
 │   ├── cli.ts            # 命令行入口
@@ -162,8 +185,11 @@ npm run build
 │   └── desktop/          # Electron 主进程、preload 和桌面下载任务
 ├── test/                 # Node 测试
 ├── build/                # 桌面端图标资源
+├── TODO.md               # 版本路线图和待办清单
 └── electron-builder.yml  # 桌面端打包配置
 ```
+
+后续源码会逐步迁移到 `collector`、`parser`、`library`、`practice`、`cloud`、`integrations`、`exporters` 和 `shared` 等模块，迁移计划见 [docs/REPOSITORY_STRUCTURE.md](./docs/REPOSITORY_STRUCTURE.md)。
 
 ## 打包桌面应用
 

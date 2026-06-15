@@ -93,7 +93,11 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: |
-            release/**
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+            release/*.pkg
+            release/*-win-*.exe
             !release/**/*.blockmap
           if-no-files-found: error
 
@@ -138,13 +142,16 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v3
         with:
+          name: XXT DL ${{ steps.release.outputs.tag }}
           tag_name: ${{ steps.release.outputs.tag }}
           target_commitish: ${{ github.sha }}
           draft: false
           prerelease: ${{ steps.release.outputs.prerelease }}
+          body_path: .github/release-intro.md
+          generate_release_notes: true
           files: |
             release-artifacts/**/*.AppImage
             release-artifacts/**/*.deb
             release-artifacts/**/*.dmg
-            release-artifacts/**/*.exe
             release-artifacts/**/*.pkg
+            release-artifacts/**/*-win-*.exe
