@@ -13,6 +13,7 @@ import {
   isAssignmentLikeLink,
   isAssignmentTaskLink,
   isCourseEntryLink,
+  resolveLoginQrImageUrl,
   resolveCourseQueryInput,
   selectCourseEntry,
 } from "../src/core.js";
@@ -237,4 +238,24 @@ test("isReadyToReadUrl recognizes post-login Chaoxing pages", () => {
   assert.equal(isReadyToReadUrl("https://mooc1-1.chaoxing.com/visit/interaction?s=1"), true);
   assert.equal(isReadyToReadUrl("https://mooc2-ans.chaoxing.com/mooc2-ans/mycourse/stu?courseid=1"), true);
   assert.equal(isReadyToReadUrl("https://passport2.chaoxing.com/login"), false);
+});
+
+test("resolveLoginQrImageUrl resolves Chaoxing QR image src values", () => {
+  assert.equal(
+    resolveLoginQrImageUrl(
+      "/createqr?uuid=469f8b5a7c4c41a8bffffae0057c0393&fid=-1",
+      "https://passport2.chaoxing.com/login?fid=-1",
+    ),
+    "https://passport2.chaoxing.com/createqr?uuid=469f8b5a7c4c41a8bffffae0057c0393&fid=-1",
+  );
+
+  assert.equal(
+    resolveLoginQrImageUrl(
+      "//passport2.chaoxing.com/createqr?uuid=abc&fid=-1",
+      "https://passport2.chaoxing.com/login",
+    ),
+    "https://passport2.chaoxing.com/createqr?uuid=abc&fid=-1",
+  );
+
+  assert.equal(resolveLoginQrImageUrl("javascript:void(0)", "https://passport2.chaoxing.com/login"), "");
 });

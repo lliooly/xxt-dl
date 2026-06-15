@@ -11,6 +11,7 @@ import {
   collectAssignmentTaskLinks,
   collectCourseLinks,
   openAssignmentList,
+  saveLoginQrCode,
   saveAssignmentPage,
   writeDebugSnapshot,
 } from "./browser.js";
@@ -41,8 +42,8 @@ async function main() {
   try {
     await page.goto(startUrl, { waitUntil: "domcontentloaded" });
 
-    console.log("浏览器已打开。请登录学习通；检测到个人空间或课程页后会自动开始抓取。");
-    await waitForReadyPage(page);
+    console.log("浏览器已打开。请登录学习通；检测到二维码会保存到输出目录，扫码后会自动继续抓取。");
+    await waitForReadyPage(page, outDir);
 
     const links = await findAssignmentLinks({
       page,
@@ -99,8 +100,9 @@ async function main() {
   }
 }
 
-async function waitForReadyPage(page: Page, timeoutMs = 180_000): Promise<void> {
+async function waitForReadyPage(page: Page, outDir: string, timeoutMs = 180_000): Promise<void> {
   const startedAt = Date.now();
+  let lastQrKey = "";
 
   while (Date.now() - startedAt < timeoutMs) {
     if (isReadyToReadUrl(page.url())) {
@@ -108,6 +110,24 @@ async function waitForReadyPage(page: Page, timeoutMs = 180_000): Promise<void> 
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
       console.log(`已检测到可读取页面：${page.url()}`);
       return;
+    }
+
+    const qr = await saveLoginQrCode(page, outDir).catch((error: unknown) => {
+      console.log(`二维码保存失败：${error instanceof Error ? error.message : String(error)}`);
+      return undefined;
+    });
+
+    const qrKey = qr ? `${qr.uuid ?? ""}:${qr.imageUrl}:${qr.expired}` : "";
+    if (qr && qrKey !== lastQrKey) {
+      lastQrKey = qrKey;
+      console.log(`检测到学习通扫码登录二维码：${path.join(outDir, qr.imageFile)}`);
+      console.log(`二维码地址：${qr.imageUrl}`);
+      if (qr.uuid) {
+        console.log(`二维码 uuid：${qr.uuid}`);
+      }
+      if (qr.expired) {
+        console.log("二维码已失效，已尝试刷新；如果仍无法扫码，请重新运行。");
+      }
     }
 
     await page.waitForTimeout(1000);

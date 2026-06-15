@@ -12,9 +12,18 @@ import {
   isAssignmentLikeLink,
   isAssignmentTaskLink,
   isCourseEntryLink,
+  resolveLoginQrImageUrl,
 } from "./core.js";
 import { extractAssignmentFromDocument, formatAssignmentReview } from "./clean.js";
-import type { CourseEntry, Link, ManifestItem, RawLinkItem, SaveAssignmentPageOptions } from "./types.js";
+import type {
+  CourseEntry,
+  Link,
+  LoginQrCode,
+  ManifestItem,
+  RawLinkItem,
+  SaveAssignmentPageOptions,
+  SavedLoginQrCode,
+} from "./types.js";
 
 export async function collectAssignmentLinks(page: Page): Promise<Link[]> {
   const links: Link[] = [];
@@ -61,6 +70,108 @@ export async function collectCourseLinks(page: Page): Promise<Link[]> {
   }
 
   return collectCourseEntryLinks(links);
+}
+
+export async function readLoginQrCode(page: Page): Promise<LoginQrCode | undefined> {
+  for (const frame of page.frames()) {
+    try {
+      const rawQr = await frame.evaluate(() => {
+        const image = document.querySelector("#quickCode, img[src*='createqr']");
+        if (!(image instanceof HTMLImageElement)) {
+          return undefined;
+        }
+
+        const box = image.closest(".ecode-box") || document;
+        const disable = box.querySelector(".ewmDisable");
+        const disableStyle = disable ? window.getComputedStyle(disable) : undefined;
+        const expired = Boolean(
+          disableStyle &&
+            disableStyle.display !== "none" &&
+            disableStyle.visibility !== "hidden" &&
+            disableStyle.opacity !== "0",
+        );
+        const readInput = (selector: string) => (box.querySelector(selector) as HTMLInputElement | null)?.value || "";
+
+        return {
+          imageSrc: image.getAttribute("src") || image.src,
+          uuid: readInput("#uuid"),
+          enc: readInput("#enc"),
+          tip: readInput("#QRCodeTip"),
+          expired,
+          frameUrl: window.location.href,
+        };
+      });
+
+      const imageUrl = resolveLoginQrImageUrl(rawQr?.imageSrc, rawQr?.frameUrl || frame.url());
+      if (imageUrl) {
+        return {
+          imageUrl,
+          uuid: rawQr?.uuid || undefined,
+          enc: rawQr?.enc || undefined,
+          tip: rawQr?.tip || undefined,
+          expired: Boolean(rawQr?.expired),
+          frameUrl: rawQr?.frameUrl || frame.url(),
+        };
+      }
+    } catch {
+      // Login pages can contain cross-origin frames. Ignore frames that cannot be evaluated.
+    }
+  }
+
+  return undefined;
+}
+
+export async function refreshLoginQrCode(page: Page): Promise<boolean> {
+  for (const frame of page.frames()) {
+    const refreshButton = frame.locator(".ewmDisable a, a[onclick*='refrushEwm']").first();
+    const count = await refreshButton.count().catch(() => 0);
+    if (count === 0) {
+      continue;
+    }
+
+    const visible = await refreshButton.isVisible().catch(() => false);
+    if (!visible) {
+      continue;
+    }
+
+    await refreshButton.click({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    return true;
+  }
+
+  return false;
+}
+
+export async function saveLoginQrCode(page: Page, outDir: string): Promise<SavedLoginQrCode | undefined> {
+  let qr = await readLoginQrCode(page);
+  if (!qr) {
+    return undefined;
+  }
+
+  if (qr.expired && (await refreshLoginQrCode(page))) {
+    qr = (await readLoginQrCode(page)) ?? qr;
+  }
+
+  await fs.ensureDir(outDir);
+
+  const imageFile = "login-qr.png";
+  const metadataFile = "login-qr.json";
+  const response = await page.context().request.get(qr.imageUrl);
+  if (!response.ok()) {
+    throw new Error(`二维码图片下载失败：${response.status()} ${response.statusText()}`);
+  }
+
+  const saved: SavedLoginQrCode = {
+    ...qr,
+    imageFile,
+    metadataFile,
+    capturedAt: new Date().toISOString(),
+  };
+
+  await fs.writeFile(path.join(outDir, imageFile), await response.body());
+  await fs.writeJson(path.join(outDir, metadataFile), saved, { spaces: 2 });
+
+  return saved;
 }
 
 export async function resolveCourseLinks(context: BrowserContext, courseLinks: Link[]): Promise<CourseEntry[]> {

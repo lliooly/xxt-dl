@@ -39,6 +39,21 @@ export interface Assignment {
   questions: Question[];
 }
 
+export interface LoginQrCode {
+  imageUrl: string;
+  uuid?: string;
+  enc?: string;
+  tip?: string;
+  expired: boolean;
+  frameUrl: string;
+}
+
+export interface SavedLoginQrCode extends LoginQrCode {
+  imageFile: string;
+  metadataFile: string;
+  capturedAt: string;
+}
+
 export interface ManifestItem {
   title: string;
   href: string;

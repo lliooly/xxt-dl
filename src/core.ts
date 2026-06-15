@@ -183,6 +183,16 @@ export function normalizeUrl(value: unknown, baseUrl: string): string {
   }
 }
 
+export function resolveLoginQrImageUrl(src: unknown, baseUrl: string): string {
+  const url = normalizeUrl(src, baseUrl);
+
+  if (!url) {
+    return "";
+  }
+
+  return url.includes("/createqr") ? url : "";
+}
+
 export function filenameForAssignment(title: unknown, fallback = "assignment"): string {
   const cleaned = compact(String(title ?? "").replace(INVALID_FILENAME_CHARS, " "));
   return cleaned.slice(0, 90) || fallback;
