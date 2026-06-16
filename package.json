@@ -1,6 +1,6 @@
 {
   "name": "xxt-dl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Download visible Chaoxing/Xuexitong assignments for personal review.",
   "license": "MIT",
   "author": {
@@ -19,6 +19,7 @@
     "start": "npm run build:node --silent && node dist/src/cli.js",
     "desktop": "npm run build --silent && electron dist/src/desktop/main.js",
     "clean": "npm run build:node --silent && node dist/src/clean-output.js",
+    "icons": "python3 scripts/generate-icons.py",
     "test": "npm run build:node --silent && node --test dist/test/*.test.js",
     "check": "tsc --noEmit",
     "pack": "npm run build --silent && electron-builder --dir",

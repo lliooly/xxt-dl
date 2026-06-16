@@ -159,6 +159,7 @@ npm run build
 | `npm start` | 构建 CLI 并启动命令行模式 |
 | `npm run desktop` | 构建并启动 Electron 桌面端 |
 | `npm run clean` | 重新生成清洗后的输出内容 |
+| `npm run icons` | 从统一源图重新生成 macOS、Windows 和 Linux 图标 |
 | `npm run pack` | 生成未安装的桌面应用目录 |
 | `npm run dist` | 使用 electron-builder 生成安装包 |
 
@@ -184,7 +185,7 @@ npm run build
 │   ├── core.ts           # 链接识别、课程匹配等核心逻辑
 │   └── desktop/          # Electron 主进程、preload 和桌面下载任务
 ├── test/                 # Node 测试
-├── build/                # 桌面端图标资源
+├── build/                # 桌面端图标资源，源图和跨平台派生产物
 ├── TODO.md               # 版本路线图和待办清单
 └── electron-builder.yml  # 桌面端打包配置
 ```
@@ -192,6 +193,8 @@ npm run build
 后续源码会逐步迁移到 `collector`、`parser`、`library`、`practice`、`cloud`、`integrations`、`exporters` 和 `shared` 等模块，迁移计划见 [docs/REPOSITORY_STRUCTURE.md](./docs/REPOSITORY_STRUCTURE.md)。
 
 ## 打包桌面应用
+
+桌面端图标使用 `build/icon.svg` 作为可编辑源文件，`npm run icons` 会生成 `build/icon.png`、`build/icon.ico` 和 `build/icon.icns`，分别用于 Linux、Windows 和 macOS 打包。
 
 本地打包前，建议把 Playwright Chromium 安装到项目依赖目录，便于打进桌面包：
 
