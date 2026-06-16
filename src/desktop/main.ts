@@ -1,8 +1,10 @@
 import { BrowserWindow, app, ipcMain, shell } from "electron";
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { DesktopDownloadJob, type StartDownloadInput } from "./downloader.js";
+import { DesktopUpdateService } from "./update-service.js";
 
 const DEFAULT_START_URL = "https://i.chaoxing.com/";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -10,6 +12,7 @@ const appRoot = path.resolve(__dirname, "../../..");
 
 let mainWindow: BrowserWindow | undefined;
 let activeJob: DesktopDownloadJob | undefined;
+let updateService: DesktopUpdateService | undefined;
 
 async function createWindow(): Promise<void> {
   configurePlaywrightBrowsers();
@@ -28,7 +31,11 @@ async function createWindow(): Promise<void> {
     },
   });
 
+  updateService = new DesktopUpdateService(getAppReleaseVersion(), (state) => send("update:state", state));
+
   await mainWindow.loadFile(path.join(appRoot, "out/index.html"));
+
+  updateService.scheduleStartupCheck();
 }
 
 function getWritableAppDataPath(): string {
@@ -45,6 +52,22 @@ function configurePlaywrightBrowsers(): void {
     : path.join(appRoot, "node_modules", "playwright-core", ".local-browsers");
 
   process.env.PLAYWRIGHT_BROWSERS_PATH = browserPath;
+}
+
+function getAppReleaseVersion(): string {
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(path.join(appRoot, "package.json"), "utf8")) as {
+      version?: string;
+    };
+
+    if (packageJson.version) {
+      return packageJson.version;
+    }
+  } catch {
+    // Fall back to Electron's app version only if package metadata is unavailable.
+  }
+
+  return app.getVersion();
 }
 
 function send(channel: string, value: unknown): void {
@@ -92,6 +115,26 @@ ipcMain.handle("download:stop", async () => {
 
 ipcMain.handle("output:open", async () => {
   await shell.openPath(path.join(getWritableAppDataPath(), "output"));
+});
+
+ipcMain.handle("update:get-state", () => {
+  return updateService?.getState();
+});
+
+ipcMain.handle("update:check", async (_event, input = {}) => {
+  return updateService?.checkForUpdates(input);
+});
+
+ipcMain.handle("update:download", async () => {
+  return updateService?.downloadUpdate();
+});
+
+ipcMain.handle("update:install", () => {
+  return updateService?.installDownloadedUpdate();
+});
+
+ipcMain.handle("update:open-release-page", async () => {
+  await updateService?.openReleasePage();
 });
 
 app.whenReady().then(createWindow);

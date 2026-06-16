@@ -14,6 +14,7 @@
 - **作业整理：** 抓取作业、测验、考试等任务详情页，保存原始 HTML 和 Markdown。
 - **题库清洗：** 从页面中提取题目、选项和正确答案，生成清洗后的复习材料。
 - **桌面界面：** 提供 Electron 桌面端，包含扫码登录、课程选择、下载进度和运行日志。
+- **应用内更新：** 桌面端可检查 GitHub Releases 新版本，展示 changelog，并在下载安装包后提示重启安装。
 - **本地优先：** 登录态、二维码和课程内容默认只保存在本机目录，不上传到远端服务。
 
 ## 项目状态
@@ -44,9 +45,9 @@ v1.0.0 前的重点：
 
 | 系统 | 推荐下载 | 说明 |
 | --- | --- | --- |
-| macOS | `.dmg` 或 `.pkg` | 当前未做代码签名，首次打开时可能需要在系统设置中允许运行 |
-| Windows | `.exe` | NSIS 安装包 |
-| Linux | `.AppImage` 或 `.deb` | 可直接运行 AppImage，Debian / Ubuntu 系可使用 `.deb` |
+| macOS x64 | `.dmg` | 当前未做代码签名，首次打开时可能需要在系统设置中允许运行 |
+| Windows x64 | `win-x64.exe` | NSIS 安装包 |
+| Linux x64 | `.AppImage` 或 `.deb` | 可直接运行 AppImage，Debian / Ubuntu 系可使用 `.deb` |
 
 Release 产物由 `.github/workflows/package.yml` 自动生成：推送 `v*` 标签或手动触发 workflow 后，会在 macOS、Windows、Linux runner 上分别构建并发布安装包。
 
@@ -210,7 +211,11 @@ npm run dist:win
 npm run dist:linux
 ```
 
-产物会输出到 `release/`。仓库中的 GitHub Actions 会在 macOS、Windows、Linux runner 上分别生成 `.dmg`、`.pkg`、`.exe`、`.AppImage` 和 `.deb`，并发布到 [GitHub Releases](https://github.com/lliooly/xxt-dl/releases)。当前配置不做代码签名，正式分发前可以继续补 Apple Developer 或 Windows 证书。
+产物会输出到 `release/`。仓库中的 GitHub Actions 会统一构建 x64 架构，并在 macOS、Windows、Linux runner 上分别生成 `.dmg`、`.exe`、`.AppImage` 和 `.deb`，发布到 [GitHub Releases](https://github.com/lliooly/xxt-dl/releases)。同时会上传 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 和 blockmap 元数据，供桌面端应用内更新使用。
+
+自动更新由 `electron-updater` 读取 GitHub Releases 提供的版本、下载地址和 release notes。桌面端默认只在发现新版本后提示用户，不会静默下载或安装；用户确认下载后，安装包准备完成才会显示「重启安装」。
+
+当前配置仍未做代码签名。Windows NSIS 和 Linux AppImage / Deb 可以生成更新元数据；macOS 自动更新正式可用前必须补 Apple Developer 签名和 notarization，否则系统会阻止自动更新链路。
 
 ## 隐私与安全
 

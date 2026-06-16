@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CircleStop, FolderOpen, Loader2, Play, QrCode, Search } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleStop,
+  Download,
+  ExternalLink,
+  FolderOpen,
+  Loader2,
+  Play,
+  QrCode,
+  RefreshCw,
+  RotateCcw,
+  Search,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DesktopDoneResult, DesktopDownloadStatus, DesktopProgress, DesktopQrCode } from "@/src/desktop/downloader";
+import type { DesktopUpdatePhase, DesktopUpdateState } from "@/src/desktop/update-state";
 import type { CourseEntry } from "@/src/types";
 
 type LogEntry = {
@@ -30,6 +43,17 @@ const statusLabels: Record<DesktopDownloadStatus, string> = {
   stopped: "已停止",
 };
 
+const updateStatusLabels: Record<DesktopUpdatePhase, string> = {
+  idle: "待检查",
+  checking: "检查中",
+  available: "有新版本",
+  "not-available": "已是最新",
+  downloading: "下载中",
+  downloaded: "待安装",
+  error: "更新出错",
+  unsupported: "不可用",
+};
+
 export default function Home() {
   const [status, setStatus] = useState<DesktopDownloadStatus>("idle");
   const [qr, setQr] = useState<DesktopQrCode | undefined>();
@@ -41,9 +65,12 @@ export default function Home() {
   const [done, setDone] = useState<DesktopDoneResult | undefined>();
   const [error, setError] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [updateState, setUpdateState] = useState<DesktopUpdateState | undefined>();
+  const [allowPrerelease, setAllowPrerelease] = useState(false);
 
   const isRunning = ["starting", "waiting-login", "selecting-course", "collecting", "downloading"].includes(status);
   const progressPercent = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+  const updateProgressPercent = updateState?.progress ? Math.round(updateState.progress.percent) : 0;
 
   useEffect(() => {
     const api = window.xxt;
@@ -64,7 +91,10 @@ export default function Home() {
         appendLog(`错误：${message}`);
       }),
       api.onLog(appendLog),
+      api.onUpdateState(setUpdateState),
     ];
+
+    void api.getUpdateState().then(setUpdateState);
 
     return () => unsubs.forEach((unsubscribe) => unsubscribe());
   }, []);
@@ -109,6 +139,20 @@ export default function Home() {
 
   async function submitCourse() {
     await window.xxt.selectCourse(selectedCourse);
+  }
+
+  async function checkUpdate() {
+    const state = await window.xxt.checkForUpdates({ allowPrerelease });
+    setUpdateState(state);
+  }
+
+  async function downloadUpdate() {
+    const state = await window.xxt.downloadUpdate();
+    setUpdateState(state);
+  }
+
+  async function installUpdate() {
+    await window.xxt.installUpdate();
   }
 
   function appendLog(message: string) {
@@ -266,6 +310,106 @@ export default function Home() {
           </CardContent>
         </Card>
       </section>
+
+      <Card className="border-foreground/15 shadow-sm">
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle>版本更新</CardTitle>
+              <CardDescription>{updateState?.message || "检查 GitHub Releases 上发布的新版本和更新说明。"}</CardDescription>
+            </div>
+            {updateState ? (
+              <Badge
+                variant={
+                  updateState.phase === "error"
+                    ? "destructive"
+                    : updateState.phase === "available" || updateState.phase === "downloaded"
+                      ? "default"
+                      : "outline"
+                }
+              >
+                {updateStatusLabels[updateState.phase]}
+              </Badge>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-4">
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="text-muted-foreground">当前版本</div>
+                <div className="mt-1 font-medium">{updateState?.currentVersion || "读取中"}</div>
+              </div>
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="text-muted-foreground">远端版本</div>
+                <div className="mt-1 font-medium">{updateState?.availableVersion || "暂无"}</div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={checkUpdate}
+                disabled={!updateState?.canCheck || updateState.phase === "checking"}
+              >
+                {updateState?.phase === "checking" ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <RefreshCw data-icon="inline-start" />
+                )}
+                检查更新
+              </Button>
+              <Button variant="outline" onClick={downloadUpdate} disabled={!updateState?.canDownload}>
+                <Download data-icon="inline-start" />
+                下载更新
+              </Button>
+              <Button onClick={installUpdate} disabled={!updateState?.canInstall}>
+                <RotateCcw data-icon="inline-start" />
+                重启安装
+              </Button>
+              <Button variant="ghost" onClick={() => window.xxt.openReleasePage()}>
+                <ExternalLink data-icon="inline-start" />
+                Release 页面
+              </Button>
+            </div>
+
+            <label className="flex w-max items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allowPrerelease}
+                onChange={(event) => setAllowPrerelease(event.target.checked)}
+              />
+              检查预发布版本
+            </label>
+
+            {updateState?.phase === "downloading" || updateState?.phase === "downloaded" ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>下载进度</span>
+                  <strong className="text-foreground">{updateProgressPercent}%</strong>
+                </div>
+                <Progress value={updateProgressPercent} />
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex min-h-52 flex-col gap-2 rounded-lg border bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="font-medium">{updateState?.releaseName || "更新说明"}</span>
+              <span className="shrink-0 text-muted-foreground">{formatDateTime(updateState?.releaseDate)}</span>
+            </div>
+            <ScrollArea className="h-40">
+              {updateState?.releaseNotes ? (
+                <pre className="whitespace-pre-wrap pr-3 font-sans text-sm leading-relaxed text-muted-foreground">
+                  {updateState.releaseNotes}
+                </pre>
+              ) : (
+                <span className="text-sm text-muted-foreground">检查到新版本后会在这里显示 changelog。</span>
+              )}
+            </ScrollArea>
+          </div>
+        </CardContent>
+      </Card>
     </main>
   );
 }
@@ -277,4 +421,15 @@ function courseLabel(courses: CourseEntry[], selectedCourse: string): string {
   }
 
   return `${course.index}. ${course.title || course.text}`;
+}
+
+function formatDateTime(value: string | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }

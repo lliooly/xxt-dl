@@ -96,9 +96,9 @@ jobs:
             release/*.AppImage
             release/*.deb
             release/*.dmg
-            release/*.pkg
             release/*-win-*.exe
-            !release/**/*.blockmap
+            release/*.yml
+            release/**/*.blockmap
           if-no-files-found: error
 
   release:
@@ -153,5 +153,6 @@ jobs:
             release-artifacts/**/*.AppImage
             release-artifacts/**/*.deb
             release-artifacts/**/*.dmg
-            release-artifacts/**/*.pkg
             release-artifacts/**/*-win-*.exe
+            release-artifacts/**/*.yml
+            release-artifacts/**/*.blockmap
