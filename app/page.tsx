@@ -502,39 +502,33 @@ function VersionUpdateModal({
         <CardContent className="flex flex-col gap-4">
           <section className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-lg border bg-muted/20 p-3">
-              <div className="text-muted-foreground">当前版本</div>
-              <div className="mt-1 font-medium">{updateState?.currentVersion || "读取中"}</div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-muted-foreground">当前版本</div>
+                <Button variant="ghost" size="icon-sm" title="前往 Release 页面" aria-label="前往 Release 页面" onClick={() => window.xxt.openReleasePage()}>
+                  <ExternalLink />
+                </Button>
+              </div>
+              <div className="mt-2 font-medium">{updateState?.currentVersion || "读取中"}</div>
             </div>
             <div className="rounded-lg border bg-muted/20 p-3">
-              <div className="text-muted-foreground">远端版本</div>
-              <div className="mt-1 font-medium">{updateState?.availableVersion || "暂无"}</div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-muted-foreground">最新版本</div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  title={allowPrerelease ? "检查含预发布" : "检查稳定版"}
+                  aria-label={allowPrerelease ? "检查含预发布" : "检查稳定版"}
+                  onClick={onCheckUpdate}
+                  disabled={isCheckingUpdate(updateState)}
+                >
+                  {updateState?.phase === "checking" ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+                </Button>
+              </div>
+              <div className="mt-2 font-medium">{updateState?.availableVersion || (updateState?.phase === "checking" ? "检查中" : "暂无")}</div>
             </div>
           </section>
 
-          <section className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-3">
-            <Button variant="outline" onClick={onCheckUpdate} disabled={isCheckingUpdate(updateState)}>
-              {updateState?.phase === "checking" ? (
-                <Loader2 data-icon="inline-start" className="animate-spin" />
-              ) : (
-                <RefreshCw data-icon="inline-start" />
-              )}
-              {allowPrerelease ? "检查含预发布" : "检查稳定版"}
-            </Button>
-            <Button variant="outline" onClick={onDownloadUpdate} disabled={!updateState?.canDownload}>
-              <Download data-icon="inline-start" />
-              下载更新
-            </Button>
-            <Button onClick={onInstallUpdate} disabled={!updateState?.canInstall}>
-              <RotateCcw data-icon="inline-start" />
-              重启安装
-            </Button>
-            <Button variant="ghost" onClick={() => window.xxt.openReleasePage()}>
-              <ExternalLink data-icon="inline-start" />
-              Release 页面
-            </Button>
-          </section>
-
-          <section className="grid grid-cols-2 gap-3">
+          <section className="flex flex-col gap-2">
             <SwitchSetting
               label="自动检查更新"
               description="打开应用后自动检查一次"
@@ -549,13 +543,39 @@ function VersionUpdateModal({
             />
           </section>
 
-          {updateState?.phase === "downloading" || updateState?.phase === "downloaded" ? (
+          {updateState?.canDownload ? (
+            <section className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">发现新版本</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{updateState.availableVersion} 可下载更新。</div>
+              </div>
+              <Button onClick={onDownloadUpdate}>
+                <Download data-icon="inline-start" />
+                下载更新
+              </Button>
+            </section>
+          ) : null}
+
+          {updateState?.phase === "downloading" ? (
             <section className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>下载进度</span>
                 <strong className="text-foreground">{updateProgressPercent}%</strong>
               </div>
               <Progress value={updateProgressPercent} />
+            </section>
+          ) : null}
+
+          {updateState?.canInstall ? (
+            <section className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">更新已准备好</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">重启应用后安装新版本。</div>
+              </div>
+              <Button onClick={onInstallUpdate}>
+                <RotateCcw data-icon="inline-start" />
+                重启安装
+              </Button>
             </section>
           ) : null}
 
