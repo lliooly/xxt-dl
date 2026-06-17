@@ -50,7 +50,7 @@ interface ReleaseNoteEntry {
 export type DesktopUpdateEvent =
   | { type: "checking" }
   | { type: "available"; info: DesktopUpdateInfo; checkedAt: string }
-  | { type: "not-available"; checkedAt: string }
+  | { type: "not-available"; checkedAt: string; info?: DesktopUpdateInfo }
   | { type: "download-progress"; progress: DesktopUpdateProgress }
   | { type: "downloaded"; info: DesktopUpdateInfo }
   | { type: "error"; message: string }
@@ -136,7 +136,7 @@ export function reduceUpdateState(state: DesktopUpdateState, event: DesktopUpdat
         ...updateInfoFields(event.info),
         phase: "available",
         canCheck: true,
-        canDownload: state.supportsInstall,
+        canDownload: state.supportsInstall && isNewerReleaseVersion(event.info.version, state.currentVersion),
         canInstall: false,
         progress: undefined,
         lastCheckedAt: event.checkedAt,
@@ -148,15 +148,18 @@ export function reduceUpdateState(state: DesktopUpdateState, event: DesktopUpdat
 
     case "not-available":
       return {
+        ...state,
+        ...(event.info ? updateInfoFields(event.info) : {}),
         phase: "not-available",
-        currentVersion: state.currentVersion,
-        supportsUpdates: state.supportsUpdates,
-        supportsInstall: state.supportsInstall,
         canCheck: true,
         canDownload: false,
         canInstall: false,
         lastCheckedAt: event.checkedAt,
-        message: "当前已经是最新版本。",
+        progress: undefined,
+        error: undefined,
+        message: event.info
+          ? `当前已经是最新版本 ${formatReleaseVersion(event.info.version)}。`
+          : "当前已经是最新版本。",
       };
 
     case "download-progress":

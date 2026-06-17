@@ -83,10 +83,6 @@ export class DesktopUpdateService {
   }
 
   scheduleStartupCheck(delayMs = 4500): void {
-    if (!this.state.supportsInstall) {
-      return;
-    }
-
     setTimeout(() => {
       void this.checkForUpdates();
     }, delayMs);
@@ -121,11 +117,12 @@ export class DesktopUpdateService {
       );
     });
 
-    this.updater.on("update-not-available", () => {
+    this.updater.on("update-not-available", (info) => {
       this.publish(
         reduceUpdateState(this.state, {
           type: "not-available",
           checkedAt: new Date().toISOString(),
+          info: toDesktopUpdateInfo(info),
         }),
       );
     });
@@ -177,11 +174,22 @@ export class DesktopUpdateService {
     try {
       const info = await fetchLatestReleaseInfo(Boolean(input.allowPrerelease));
 
-      if (!info || !isNewerReleaseVersion(info.version, this.state.currentVersion)) {
+      if (!info) {
         this.publish(
           reduceUpdateState(this.state, {
             type: "not-available",
             checkedAt: new Date().toISOString(),
+          }),
+        );
+        return;
+      }
+
+      if (!isNewerReleaseVersion(info.version, this.state.currentVersion)) {
+        this.publish(
+          reduceUpdateState(this.state, {
+            type: "not-available",
+            checkedAt: new Date().toISOString(),
+            info,
           }),
         );
         return;

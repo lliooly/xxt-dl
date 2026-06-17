@@ -400,9 +400,7 @@ export default function Home() {
             </div>
             <ScrollArea className="h-40">
               {updateState?.releaseNotes ? (
-                <pre className="whitespace-pre-wrap pr-3 font-sans text-sm leading-relaxed text-muted-foreground">
-                  {updateState.releaseNotes}
-                </pre>
+                <MarkdownNotes markdown={updateState.releaseNotes} />
               ) : (
                 <span className="text-sm text-muted-foreground">检查到新版本后会在这里显示 changelog。</span>
               )}
@@ -432,4 +430,120 @@ function formatDateTime(value: string | undefined): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function MarkdownNotes({ markdown }: { markdown: string }) {
+  const blocks = markdownToBlocks(markdown);
+
+  return (
+    <div className="pr-3 text-sm leading-relaxed text-muted-foreground">
+      {blocks.map((block, index) => {
+        if (block.type === "heading") {
+          const HeadingTag = block.level === 2 ? "h3" : "h4";
+          return (
+            <HeadingTag key={index} className="mt-3 first:mt-0 font-semibold text-foreground">
+              {renderInlineMarkdown(block.text)}
+            </HeadingTag>
+          );
+        }
+
+        if (block.type === "list") {
+          return (
+            <ul key={index} className="mt-2 list-disc space-y-1 pl-5">
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex}>{renderInlineMarkdown(item)}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={index} className="mt-2 first:mt-0">
+            {renderInlineMarkdown(block.text)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+type MarkdownBlock =
+  | { type: "heading"; level: 2 | 3; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "paragraph"; text: string };
+
+function markdownToBlocks(markdown: string): MarkdownBlock[] {
+  const blocks: MarkdownBlock[] = [];
+  let pendingList: string[] = [];
+
+  function flushList() {
+    if (pendingList.length > 0) {
+      blocks.push({ type: "list", items: pendingList });
+      pendingList = [];
+    }
+  }
+
+  for (const rawLine of markdown.split(/\r?\n/)) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushList();
+      continue;
+    }
+
+    const headingMatch = /^(#{1,3})\s+(.+)$/.exec(line);
+    if (headingMatch) {
+      flushList();
+      blocks.push({
+        type: "heading",
+        level: headingMatch[1].length <= 2 ? 2 : 3,
+        text: headingMatch[2],
+      });
+      continue;
+    }
+
+    const listMatch = /^[-*]\s+(.+)$/.exec(line);
+    if (listMatch) {
+      pendingList.push(listMatch[1]);
+      continue;
+    }
+
+    flushList();
+    blocks.push({ type: "paragraph", text: line });
+  }
+
+  flushList();
+  return blocks;
+}
+
+function renderInlineMarkdown(text: string) {
+  const parts: React.ReactNode[] = [];
+  const linkPattern = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = linkPattern.exec(text))) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    parts.push(
+      <a
+        key={`${match[2]}-${match.index}`}
+        className="font-medium text-foreground underline underline-offset-2"
+        href={match[2]}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {match[1]}
+      </a>,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
 }

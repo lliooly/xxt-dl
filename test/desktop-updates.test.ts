@@ -70,6 +70,20 @@ test("reduceUpdateState exposes a downloadable update with changelog", () => {
   assert.equal(state.canInstall, false);
 });
 
+test("reduceUpdateState does not enable download when remote version is not newer", () => {
+  const state = reduceUpdateState(createState(), {
+    type: "available",
+    checkedAt: "2026-06-17T10:00:00.000Z",
+    info: {
+      version: "v0.1.1",
+      releaseNotes: "当前版本说明",
+    },
+  });
+
+  assert.equal(state.availableVersion, "v0.1.1");
+  assert.equal(state.canDownload, false);
+});
+
 test("reduceUpdateState keeps installer actions disabled for dev release checks", () => {
   const state = reduceUpdateState(createInitialUpdateState("0.1.1", false), {
     type: "available",
@@ -85,6 +99,26 @@ test("reduceUpdateState keeps installer actions disabled for dev release checks"
   assert.equal(state.canDownload, false);
   assert.equal(state.canInstall, false);
   assert.equal(state.message, "发现新版本 v0.2.0。请从 Release 页面下载安装包。");
+});
+
+test("reduceUpdateState keeps remote release info when current version is latest", () => {
+  const state = reduceUpdateState(createState(), {
+    type: "not-available",
+    checkedAt: "2026-06-17T10:00:00.000Z",
+    info: {
+      version: "v0.1.1",
+      releaseName: "XXT DL v0.1.1",
+      releaseDate: "2026-06-17T09:30:00.000Z",
+      releaseNotes: "当前版本说明",
+    },
+  });
+
+  assert.equal(state.phase, "not-available");
+  assert.equal(state.availableVersion, "v0.1.1");
+  assert.equal(state.releaseName, "XXT DL v0.1.1");
+  assert.equal(state.releaseDate, "2026-06-17T09:30:00.000Z");
+  assert.equal(state.releaseNotes, "当前版本说明");
+  assert.equal(state.message, "当前已经是最新版本 v0.1.1。");
 });
 
 test("reduceUpdateState keeps progress and enables install after download", () => {
