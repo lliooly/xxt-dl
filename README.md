@@ -164,6 +164,7 @@ npm run build
 | `npm run pack` | 生成未安装的桌面应用目录 |
 | `npm run dist` | 使用 electron-builder 生成安装包 |
 | `npm run validate:release` | 校验 release 目录中的跨平台安装包和更新元数据 |
+| `npm run release:test-version` | 准备应用内更新测试用的 beta 版本号 |
 
 ## 项目结构
 
@@ -215,6 +216,8 @@ npm run dist:linux
 产物会输出到 `release/`。仓库中的 GitHub Actions 会统一构建 x64 架构，并在 macOS、Windows、Linux runner 上分别生成 `.dmg`、`.exe`、`.AppImage` 和 `.deb`，打包后运行 `npm run validate:release` 校验安装包和 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 更新元数据，再发布到 [GitHub Releases](https://github.com/lliooly/xxt-dl/releases)。同时会上传 blockmap 元数据，供桌面端应用内更新使用。
 
 自动更新由 `electron-updater` 读取 GitHub Releases 提供的版本、下载地址和 release notes。桌面端默认只在发现新版本后提示用户，不会静默下载或安装；用户确认下载后，安装包准备完成才会显示「重启安装」。
+
+应用内更新的完整测试流程见 [docs/UPDATE_TESTING.md](./docs/UPDATE_TESTING.md)。建议使用 `v0.1.2-beta.0 -> v0.1.2-beta.1` 这类预发布版本验证下载和安装链路，避免影响稳定版用户。
 
 当前配置仍未做代码签名。Windows NSIS 和 Linux AppImage / Deb 可以生成更新元数据；macOS 自动更新正式可用前必须补 Apple Developer 签名和 notarization，否则系统会阻止自动更新链路。
 
