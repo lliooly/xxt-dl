@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { parseReleaseMarkdown } from "../src/desktop/release-markdown.js";
+import { parseReleaseInline, parseReleaseMarkdown } from "../src/desktop/release-markdown.js";
 
 test("parseReleaseMarkdown converts GitHub release tables into table blocks", () => {
   const blocks = parseReleaseMarkdown(`## 下载
@@ -43,5 +43,37 @@ test("parseReleaseMarkdown keeps lists and paragraphs readable", () => {
       items: ["支持 [下载](https://example.com)", "支持 `latest.yml`"],
     },
     { type: "paragraph", text: "普通说明" },
+  ]);
+});
+
+test("parseReleaseMarkdown ignores GitHub generated HTML comments", () => {
+  const blocks = parseReleaseMarkdown(`<!-- Release notes generated using configuration in .github/release.yml at v0.1.1 -->
+
+**Full Changelog**: https://github.com/lliooly/xxt-dl/compare/v0.1.0...v0.1.1`);
+
+  assert.deepEqual(blocks, [
+    {
+      type: "paragraph",
+      text: "**Full Changelog**: https://github.com/lliooly/xxt-dl/compare/v0.1.0...v0.1.1",
+    },
+  ]);
+});
+
+test("parseReleaseInline renders bold text, inline code, markdown links, and bare urls", () => {
+  assert.deepEqual(parseReleaseInline("**Full Changelog**: https://github.com/lliooly/xxt-dl/compare/v0.1.0...v0.1.1"), [
+    { type: "strong", text: "Full Changelog" },
+    { type: "text", text: ": " },
+    {
+      type: "link",
+      text: "https://github.com/lliooly/xxt-dl/compare/v0.1.0...v0.1.1",
+      href: "https://github.com/lliooly/xxt-dl/compare/v0.1.0...v0.1.1",
+    },
+  ]);
+
+  assert.deepEqual(parseReleaseInline("下载 `.dmg` 或 [Release](https://example.com)"), [
+    { type: "text", text: "下载 " },
+    { type: "code", text: ".dmg" },
+    { type: "text", text: " 或 " },
+    { type: "link", text: "Release", href: "https://example.com" },
   ]);
 });

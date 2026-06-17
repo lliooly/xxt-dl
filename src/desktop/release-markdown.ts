@@ -4,6 +4,12 @@ export type ReleaseMarkdownBlock =
   | { type: "paragraph"; text: string }
   | { type: "table"; headers: string[]; rows: string[][] };
 
+export type ReleaseInlineNode =
+  | { type: "text"; text: string }
+  | { type: "strong"; text: string }
+  | { type: "code"; text: string }
+  | { type: "link"; text: string; href: string };
+
 export function parseReleaseMarkdown(markdown: string): ReleaseMarkdownBlock[] {
   const blocks: ReleaseMarkdownBlock[] = [];
   const lines = markdown.split(/\r?\n/);
@@ -18,6 +24,11 @@ export function parseReleaseMarkdown(markdown: string): ReleaseMarkdownBlock[] {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index].trim();
+
+    if (isHtmlComment(line)) {
+      flushList();
+      continue;
+    }
 
     if (!line) {
       flushList();
@@ -62,6 +73,42 @@ export function parseReleaseMarkdown(markdown: string): ReleaseMarkdownBlock[] {
 
   flushList();
   return blocks;
+}
+
+export function parseReleaseInline(text: string): ReleaseInlineNode[] {
+  const nodes: ReleaseInlineNode[] = [];
+  const inlinePattern = /(\*\*[^*]+\*\*)|(`[^`]+`)|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s)]+)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = inlinePattern.exec(text))) {
+    pushText(nodes, text.slice(lastIndex, match.index));
+
+    if (match[1]) {
+      nodes.push({ type: "strong", text: match[1].slice(2, -2) });
+    } else if (match[2]) {
+      nodes.push({ type: "code", text: match[2].slice(1, -1) });
+    } else if (match[3] && match[4]) {
+      nodes.push({ type: "link", text: match[3], href: match[4] });
+    } else if (match[5]) {
+      nodes.push({ type: "link", text: match[5], href: match[5] });
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  pushText(nodes, text.slice(lastIndex));
+  return nodes.length > 0 ? nodes : [{ type: "text", text }];
+}
+
+function pushText(nodes: ReleaseInlineNode[], text: string): void {
+  if (text) {
+    nodes.push({ type: "text", text });
+  }
+}
+
+function isHtmlComment(line: string): boolean {
+  return /^<!--.*-->$/.test(line);
 }
 
 function isTableHeader(line: string, separator: string | undefined): boolean {

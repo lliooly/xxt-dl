@@ -82,7 +82,7 @@ export class DesktopUpdateService {
     await shell.openExternal(RELEASE_PAGE_URL);
   }
 
-  scheduleStartupCheck(delayMs = 4500): void {
+  scheduleStartupCheck(delayMs = 1000): void {
     setTimeout(() => {
       void this.checkForUpdates();
     }, delayMs);

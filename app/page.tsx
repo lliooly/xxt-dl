@@ -23,7 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DesktopDoneResult, DesktopDownloadStatus, DesktopProgress, DesktopQrCode } from "@/src/desktop/downloader";
-import { parseReleaseMarkdown } from "@/src/desktop/release-markdown";
+import { parseReleaseInline, parseReleaseMarkdown } from "@/src/desktop/release-markdown";
 import type { ReleaseMarkdownBlock } from "@/src/desktop/release-markdown";
 import type { DesktopUpdatePhase, DesktopUpdateState } from "@/src/desktop/update-state";
 import type { CourseEntry } from "@/src/types";
@@ -68,7 +68,6 @@ export default function Home() {
   const [error, setError] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [updateState, setUpdateState] = useState<DesktopUpdateState | undefined>();
-  const [allowPrerelease, setAllowPrerelease] = useState(false);
 
   const isRunning = ["starting", "waiting-login", "selecting-course", "collecting", "downloading"].includes(status);
   const progressPercent = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
@@ -143,7 +142,7 @@ export default function Home() {
     await window.xxt.selectCourse(selectedCourse);
   }
 
-  async function checkUpdate() {
+  async function checkUpdate(allowPrerelease = false) {
     const state = await window.xxt.checkForUpdates({ allowPrerelease });
     setUpdateState(state);
   }
@@ -349,17 +348,21 @@ export default function Home() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={checkUpdate}
-                disabled={!updateState?.canCheck || updateState.phase === "checking"}
-              >
+              <Button variant="outline" onClick={() => checkUpdate(false)} disabled={isCheckingUpdate(updateState)}>
                 {updateState?.phase === "checking" ? (
                   <Loader2 data-icon="inline-start" className="animate-spin" />
                 ) : (
                   <RefreshCw data-icon="inline-start" />
                 )}
-                检查更新
+                检查稳定版
+              </Button>
+              <Button variant="outline" onClick={() => checkUpdate(true)} disabled={isCheckingUpdate(updateState)}>
+                {updateState?.phase === "checking" ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <RefreshCw data-icon="inline-start" />
+                )}
+                检查预发布
               </Button>
               <Button variant="outline" onClick={downloadUpdate} disabled={!updateState?.canDownload}>
                 <Download data-icon="inline-start" />
@@ -374,15 +377,6 @@ export default function Home() {
                 Release 页面
               </Button>
             </div>
-
-            <label className="flex w-max items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={allowPrerelease}
-                onChange={(event) => setAllowPrerelease(event.target.checked)}
-              />
-              检查预发布版本
-            </label>
 
             {updateState?.phase === "downloading" || updateState?.phase === "downloaded" ? (
               <div className="flex flex-col gap-2">
@@ -432,6 +426,10 @@ function formatDateTime(value: string | undefined): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function isCheckingUpdate(updateState: DesktopUpdateState | undefined): boolean {
+  return !updateState?.canCheck || updateState.phase === "checking";
 }
 
 function MarkdownNotes({ markdown }: { markdown: string }) {
@@ -503,42 +501,37 @@ function MarkdownTable({ block }: { block: Extract<ReleaseMarkdownBlock, { type:
 }
 
 function renderInlineMarkdown(text: string) {
-  const parts: React.ReactNode[] = [];
-  const inlinePattern = /(`[^`]+`)|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = inlinePattern.exec(text))) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
+  return parseReleaseInline(text).map((node, index) => {
+    if (node.type === "strong") {
+      return (
+        <strong key={index} className="font-semibold text-foreground">
+          {node.text}
+        </strong>
+      );
     }
 
-    if (match[1]) {
-      parts.push(
-        <code key={`${match[1]}-${match.index}`} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em] text-foreground">
-          {match[1].slice(1, -1)}
-        </code>,
+    if (node.type === "code") {
+      return (
+        <code key={index} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em] text-foreground">
+          {node.text}
+        </code>
       );
-    } else {
-      parts.push(
+    }
+
+    if (node.type === "link") {
+      return (
         <a
-          key={`${match[3]}-${match.index}`}
-          className="font-medium text-foreground underline underline-offset-2"
-          href={match[3]}
+          key={index}
+          className="break-all font-medium text-foreground underline underline-offset-2"
+          href={node.href}
           target="_blank"
           rel="noreferrer"
         >
-          {match[2]}
-        </a>,
+          {node.text}
+        </a>
       );
     }
 
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : text;
+    return node.text;
+  });
 }
