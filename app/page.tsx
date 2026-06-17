@@ -23,6 +23,8 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DesktopDoneResult, DesktopDownloadStatus, DesktopProgress, DesktopQrCode } from "@/src/desktop/downloader";
+import { parseReleaseMarkdown } from "@/src/desktop/release-markdown";
+import type { ReleaseMarkdownBlock } from "@/src/desktop/release-markdown";
 import type { DesktopUpdatePhase, DesktopUpdateState } from "@/src/desktop/update-state";
 import type { CourseEntry } from "@/src/types";
 
@@ -433,7 +435,7 @@ function formatDateTime(value: string | undefined): string {
 }
 
 function MarkdownNotes({ markdown }: { markdown: string }) {
-  const blocks = markdownToBlocks(markdown);
+  const blocks = parseReleaseMarkdown(markdown);
 
   return (
     <div className="pr-3 text-sm leading-relaxed text-muted-foreground">
@@ -457,6 +459,10 @@ function MarkdownNotes({ markdown }: { markdown: string }) {
           );
         }
 
+        if (block.type === "table") {
+          return <MarkdownTable key={index} block={block} />;
+        }
+
         return (
           <p key={index} className="mt-2 first:mt-0">
             {renderInlineMarkdown(block.text)}
@@ -467,77 +473,66 @@ function MarkdownNotes({ markdown }: { markdown: string }) {
   );
 }
 
-type MarkdownBlock =
-  | { type: "heading"; level: 2 | 3; text: string }
-  | { type: "list"; items: string[] }
-  | { type: "paragraph"; text: string };
-
-function markdownToBlocks(markdown: string): MarkdownBlock[] {
-  const blocks: MarkdownBlock[] = [];
-  let pendingList: string[] = [];
-
-  function flushList() {
-    if (pendingList.length > 0) {
-      blocks.push({ type: "list", items: pendingList });
-      pendingList = [];
-    }
-  }
-
-  for (const rawLine of markdown.split(/\r?\n/)) {
-    const line = rawLine.trim();
-
-    if (!line) {
-      flushList();
-      continue;
-    }
-
-    const headingMatch = /^(#{1,3})\s+(.+)$/.exec(line);
-    if (headingMatch) {
-      flushList();
-      blocks.push({
-        type: "heading",
-        level: headingMatch[1].length <= 2 ? 2 : 3,
-        text: headingMatch[2],
-      });
-      continue;
-    }
-
-    const listMatch = /^[-*]\s+(.+)$/.exec(line);
-    if (listMatch) {
-      pendingList.push(listMatch[1]);
-      continue;
-    }
-
-    flushList();
-    blocks.push({ type: "paragraph", text: line });
-  }
-
-  flushList();
-  return blocks;
+function MarkdownTable({ block }: { block: Extract<ReleaseMarkdownBlock, { type: "table" }> }) {
+  return (
+    <div className="mt-3 overflow-x-auto rounded-md border bg-background">
+      <table className="w-full min-w-max border-collapse text-left text-xs">
+        <thead className="bg-muted/70 text-foreground">
+          <tr>
+            {block.headers.map((header, index) => (
+              <th key={`${header}-${index}`} className="border-b px-3 py-2 font-medium">
+                {renderInlineMarkdown(header)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {block.rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-b last:border-b-0">
+              {block.headers.map((_, cellIndex) => (
+                <td key={cellIndex} className="px-3 py-2 align-top">
+                  {renderInlineMarkdown(row[cellIndex] || "")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function renderInlineMarkdown(text: string) {
   const parts: React.ReactNode[] = [];
-  const linkPattern = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+  const inlinePattern = /(`[^`]+`)|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = linkPattern.exec(text))) {
+  while ((match = inlinePattern.exec(text))) {
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
 
-    parts.push(
-      <a
-        key={`${match[2]}-${match.index}`}
-        className="font-medium text-foreground underline underline-offset-2"
-        href={match[2]}
-        target="_blank"
-        rel="noreferrer"
-      >
-        {match[1]}
-      </a>,
-    );
+    if (match[1]) {
+      parts.push(
+        <code key={`${match[1]}-${match.index}`} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em] text-foreground">
+          {match[1].slice(1, -1)}
+        </code>,
+      );
+    } else {
+      parts.push(
+        <a
+          key={`${match[3]}-${match.index}`}
+          className="font-medium text-foreground underline underline-offset-2"
+          href={match[3]}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {match[2]}
+        </a>,
+      );
+    }
+
     lastIndex = match.index + match[0].length;
   }
 
