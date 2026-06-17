@@ -76,6 +76,7 @@ export default function Home() {
   const [allowPrerelease, setAllowPrerelease] = useState(false);
   const [updateSettingsLoaded, setUpdateSettingsLoaded] = useState(false);
   const startupUpdateCheckStarted = useRef(false);
+  const updatePanelRef = useRef<HTMLDivElement | null>(null);
 
   const isRunning = ["starting", "waiting-login", "selecting-course", "collecting", "downloading"].includes(status);
   const progressPercent = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
@@ -205,6 +206,10 @@ export default function Home() {
     await window.xxt.installUpdate();
   }
 
+  function scrollToUpdatePanel() {
+    updatePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function appendLog(message: string) {
     setLogs((current) => [...current.slice(-80), { id: Date.now() + Math.random(), message }]);
   }
@@ -213,7 +218,15 @@ export default function Home() {
     <main className="mx-auto flex w-[min(1120px,calc(100vw-48px))] flex-col gap-4 py-8">
       <section className="flex items-start justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <div className="w-max rounded-md border px-2 py-1 text-xs font-medium tracking-wider">XXT DL</div>
+          <button
+            type="button"
+            className="flex w-max items-center overflow-hidden rounded-md border bg-background text-xs font-medium transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            aria-label="查看版本更新"
+            onClick={scrollToUpdatePanel}
+          >
+            <span className="px-2 py-1 tracking-wider">XXT DL</span>
+            <span className="border-l bg-muted/40 px-2 py-1 text-muted-foreground">{updateState?.currentVersion || "版本读取中"}</span>
+          </button>
           <h1 className="text-4xl font-semibold tracking-normal">学习通作业整理</h1>
           <p className="text-sm text-muted-foreground">{primaryHint}</p>
         </div>
@@ -361,7 +374,7 @@ export default function Home() {
         </Card>
       </section>
 
-      <Card className="border-foreground/15 shadow-sm">
+      <Card ref={updatePanelRef} className="scroll-mt-6 border-foreground/15 shadow-sm">
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
