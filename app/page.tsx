@@ -463,13 +463,16 @@ function VersionUpdateModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-background/75 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid place-items-center bg-background/75 p-6 backdrop-blur-sm [animation:xxt-modal-backdrop-in_140ms_ease-out]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="version-update-title"
       onClick={onClose}
     >
-      <Card className="max-h-[calc(100vh-48px)] w-[min(920px,calc(100vw-48px))] border-foreground/15 shadow-xl" onClick={(event) => event.stopPropagation()}>
+      <Card
+        className="max-h-[calc(100vh-48px)] w-[min(720px,calc(100vw-48px))] border-foreground/15 shadow-xl [animation:xxt-version-card-in_180ms_cubic-bezier(.2,.8,.2,1)]"
+        onClick={(event) => event.stopPropagation()}
+      >
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -496,81 +499,79 @@ function VersionUpdateModal({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-4">
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg border bg-muted/20 p-3">
-                <div className="text-muted-foreground">当前版本</div>
-                <div className="mt-1 font-medium">{updateState?.currentVersion || "读取中"}</div>
-              </div>
-              <div className="rounded-lg border bg-muted/20 p-3">
-                <div className="text-muted-foreground">远端版本</div>
-                <div className="mt-1 font-medium">{updateState?.availableVersion || "暂无"}</div>
-              </div>
+        <CardContent className="flex flex-col gap-4">
+          <section className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <div className="text-muted-foreground">当前版本</div>
+              <div className="mt-1 font-medium">{updateState?.currentVersion || "读取中"}</div>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={onCheckUpdate} disabled={isCheckingUpdate(updateState)}>
-                {updateState?.phase === "checking" ? (
-                  <Loader2 data-icon="inline-start" className="animate-spin" />
-                ) : (
-                  <RefreshCw data-icon="inline-start" />
-                )}
-                {allowPrerelease ? "检查含预发布" : "检查稳定版"}
-              </Button>
-              <Button variant="outline" onClick={onDownloadUpdate} disabled={!updateState?.canDownload}>
-                <Download data-icon="inline-start" />
-                下载更新
-              </Button>
-              <Button onClick={onInstallUpdate} disabled={!updateState?.canInstall}>
-                <RotateCcw data-icon="inline-start" />
-                重启安装
-              </Button>
-              <Button variant="ghost" onClick={() => window.xxt.openReleasePage()}>
-                <ExternalLink data-icon="inline-start" />
-                Release 页面
-              </Button>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <div className="text-muted-foreground">远端版本</div>
+              <div className="mt-1 font-medium">{updateState?.availableVersion || "暂无"}</div>
             </div>
+          </section>
 
-            <div className="grid grid-cols-2 gap-3">
-              <SwitchSetting
-                label="自动检查更新"
-                description="打开应用后自动检查一次"
-                checked={autoCheckUpdates}
-                onCheckedChange={onAutoCheckUpdatesChange}
-              />
-              <SwitchSetting
-                label="包含预发布版本"
-                description="检查时允许 beta / rc release"
-                checked={allowPrerelease}
-                onCheckedChange={onAllowPrereleaseChange}
-              />
-            </div>
+          <section className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-3">
+            <Button variant="outline" onClick={onCheckUpdate} disabled={isCheckingUpdate(updateState)}>
+              {updateState?.phase === "checking" ? (
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <RefreshCw data-icon="inline-start" />
+              )}
+              {allowPrerelease ? "检查含预发布" : "检查稳定版"}
+            </Button>
+            <Button variant="outline" onClick={onDownloadUpdate} disabled={!updateState?.canDownload}>
+              <Download data-icon="inline-start" />
+              下载更新
+            </Button>
+            <Button onClick={onInstallUpdate} disabled={!updateState?.canInstall}>
+              <RotateCcw data-icon="inline-start" />
+              重启安装
+            </Button>
+            <Button variant="ghost" onClick={() => window.xxt.openReleasePage()}>
+              <ExternalLink data-icon="inline-start" />
+              Release 页面
+            </Button>
+          </section>
 
-            {updateState?.phase === "downloading" || updateState?.phase === "downloaded" ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>下载进度</span>
-                  <strong className="text-foreground">{updateProgressPercent}%</strong>
-                </div>
-                <Progress value={updateProgressPercent} />
+          <section className="grid grid-cols-2 gap-3">
+            <SwitchSetting
+              label="自动检查更新"
+              description="打开应用后自动检查一次"
+              checked={autoCheckUpdates}
+              onCheckedChange={onAutoCheckUpdatesChange}
+            />
+            <SwitchSetting
+              label="包含预发布版本"
+              description="检查时允许 beta / rc release"
+              checked={allowPrerelease}
+              onCheckedChange={onAllowPrereleaseChange}
+            />
+          </section>
+
+          {updateState?.phase === "downloading" || updateState?.phase === "downloaded" ? (
+            <section className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>下载进度</span>
+                <strong className="text-foreground">{updateProgressPercent}%</strong>
               </div>
-            ) : null}
-          </div>
+              <Progress value={updateProgressPercent} />
+            </section>
+          ) : null}
 
-          <div className="flex min-h-52 flex-col gap-2 rounded-lg border bg-muted/20 p-3">
+          <section className="flex min-h-56 flex-col gap-2 rounded-lg border bg-muted/20 p-3">
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-medium">{updateState?.releaseName || "更新说明"}</span>
               <span className="shrink-0 text-muted-foreground">{formatDateTime(updateState?.releaseDate)}</span>
             </div>
-            <ScrollArea className="h-40">
+            <ScrollArea className="h-52">
               {updateState?.releaseNotes ? (
                 <MarkdownNotes markdown={updateState.releaseNotes} />
               ) : (
                 <span className="text-sm text-muted-foreground">检查到新版本后会在这里显示 changelog。</span>
               )}
             </ScrollArea>
-          </div>
+          </section>
         </CardContent>
       </Card>
     </div>
