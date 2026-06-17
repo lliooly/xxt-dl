@@ -556,6 +556,22 @@ function VersionUpdateModal({
             </section>
           ) : null}
 
+          {updateState?.phase === "error" ? (
+            <section className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-destructive">检查更新失败</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {updateState.error || updateState.message || "请检查网络连接，或稍后重试。"}
+                </div>
+                <div className="mt-0.5 text-xs text-muted-foreground">可以稍后重试，或前往 Release 页面手动下载安装包。</div>
+              </div>
+              <Button variant="outline" onClick={onCheckUpdate} disabled={isCheckingUpdate(updateState)}>
+                <RefreshCw data-icon="inline-start" />
+                重试检查
+              </Button>
+            </section>
+          ) : null}
+
           {updateState?.phase === "downloading" ? (
             <section className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3">
               <div className="flex items-center justify-between text-sm text-muted-foreground">

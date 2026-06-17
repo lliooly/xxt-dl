@@ -49,7 +49,7 @@ v1.0.0 前的重点：
 | Windows x64 | `win-x64.exe` | NSIS 安装包 |
 | Linux x64 | `.AppImage` 或 `.deb` | 可直接运行 AppImage，Debian / Ubuntu 系可使用 `.deb` |
 
-Release 产物由 `.github/workflows/package.yml` 自动生成：推送 `v*` 标签或手动触发 workflow 后，会在 macOS、Windows、Linux runner 上分别构建并发布安装包。
+Release 产物由 `.github/workflows/package.yml` 自动生成：推送 `v*` 标签或手动触发 workflow 后，会在 macOS、Windows、Linux runner 上分别构建并校验安装包，再发布到 GitHub Releases。
 
 ### 从源码运行 CLI
 
@@ -163,6 +163,7 @@ npm run build
 | `npm run icons` | 从统一源图重新生成 macOS、Windows 和 Linux 图标 |
 | `npm run pack` | 生成未安装的桌面应用目录 |
 | `npm run dist` | 使用 electron-builder 生成安装包 |
+| `npm run validate:release` | 校验 release 目录中的跨平台安装包和更新元数据 |
 
 ## 项目结构
 
@@ -211,7 +212,7 @@ npm run dist:win
 npm run dist:linux
 ```
 
-产物会输出到 `release/`。仓库中的 GitHub Actions 会统一构建 x64 架构，并在 macOS、Windows、Linux runner 上分别生成 `.dmg`、`.exe`、`.AppImage` 和 `.deb`，发布到 [GitHub Releases](https://github.com/lliooly/xxt-dl/releases)。同时会上传 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 和 blockmap 元数据，供桌面端应用内更新使用。
+产物会输出到 `release/`。仓库中的 GitHub Actions 会统一构建 x64 架构，并在 macOS、Windows、Linux runner 上分别生成 `.dmg`、`.exe`、`.AppImage` 和 `.deb`，打包后运行 `npm run validate:release` 校验安装包和 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 更新元数据，再发布到 [GitHub Releases](https://github.com/lliooly/xxt-dl/releases)。同时会上传 blockmap 元数据，供桌面端应用内更新使用。
 
 自动更新由 `electron-updater` 读取 GitHub Releases 提供的版本、下载地址和 release notes。桌面端默认只在发现新版本后提示用户，不会静默下载或安装；用户确认下载后，安装包准备完成才会显示「重启安装」。
 
