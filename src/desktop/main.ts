@@ -34,8 +34,6 @@ async function createWindow(): Promise<void> {
   updateService = new DesktopUpdateService(getAppReleaseVersion(), (state) => send("update:state", state));
 
   await mainWindow.loadFile(path.join(appRoot, "out/index.html"));
-
-  updateService.scheduleStartupCheck();
 }
 
 function getWritableAppDataPath(): string {

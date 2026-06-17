@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   CircleStop,
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { DesktopDoneResult, DesktopDownloadStatus, DesktopProgress, DesktopQrCode } from "@/src/desktop/downloader";
 import { parseReleaseInline, parseReleaseMarkdown } from "@/src/desktop/release-markdown";
 import type { ReleaseMarkdownBlock } from "@/src/desktop/release-markdown";
@@ -56,6 +57,9 @@ const updateStatusLabels: Record<DesktopUpdatePhase, string> = {
   unsupported: "不可用",
 };
 
+const autoCheckUpdatesStorageKey = "xxt-dl:auto-check-updates";
+const allowPrereleaseStorageKey = "xxt-dl:allow-prerelease-updates";
+
 export default function Home() {
   const [status, setStatus] = useState<DesktopDownloadStatus>("idle");
   const [qr, setQr] = useState<DesktopQrCode | undefined>();
@@ -68,6 +72,10 @@ export default function Home() {
   const [error, setError] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [updateState, setUpdateState] = useState<DesktopUpdateState | undefined>();
+  const [autoCheckUpdates, setAutoCheckUpdates] = useState(true);
+  const [allowPrerelease, setAllowPrerelease] = useState(false);
+  const [updateSettingsLoaded, setUpdateSettingsLoaded] = useState(false);
+  const startupUpdateCheckStarted = useRef(false);
 
   const isRunning = ["starting", "waiting-login", "selecting-course", "collecting", "downloading"].includes(status);
   const progressPercent = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
@@ -99,6 +107,47 @@ export default function Home() {
 
     return () => unsubs.forEach((unsubscribe) => unsubscribe());
   }, []);
+
+  useEffect(() => {
+    setAutoCheckUpdates(readStoredBoolean(autoCheckUpdatesStorageKey, true));
+    setAllowPrerelease(readStoredBoolean(allowPrereleaseStorageKey, false));
+    setUpdateSettingsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!updateSettingsLoaded) {
+      return;
+    }
+
+    window.localStorage.setItem(autoCheckUpdatesStorageKey, String(autoCheckUpdates));
+  }, [autoCheckUpdates, updateSettingsLoaded]);
+
+  useEffect(() => {
+    if (!updateSettingsLoaded) {
+      return;
+    }
+
+    window.localStorage.setItem(allowPrereleaseStorageKey, String(allowPrerelease));
+  }, [allowPrerelease, updateSettingsLoaded]);
+
+  useEffect(() => {
+    if (
+      !updateSettingsLoaded ||
+      !autoCheckUpdates ||
+      startupUpdateCheckStarted.current ||
+      !updateState?.canCheck ||
+      updateState.phase !== "idle"
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      startupUpdateCheckStarted.current = true;
+      void checkUpdate(allowPrerelease);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [allowPrerelease, autoCheckUpdates, updateSettingsLoaded, updateState?.canCheck, updateState?.phase]);
 
   const primaryHint = useMemo(() => {
     if (status === "waiting-login") {
@@ -348,21 +397,13 @@ export default function Home() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={() => checkUpdate(false)} disabled={isCheckingUpdate(updateState)}>
+              <Button variant="outline" onClick={() => checkUpdate(allowPrerelease)} disabled={isCheckingUpdate(updateState)}>
                 {updateState?.phase === "checking" ? (
                   <Loader2 data-icon="inline-start" className="animate-spin" />
                 ) : (
                   <RefreshCw data-icon="inline-start" />
                 )}
-                检查稳定版
-              </Button>
-              <Button variant="outline" onClick={() => checkUpdate(true)} disabled={isCheckingUpdate(updateState)}>
-                {updateState?.phase === "checking" ? (
-                  <Loader2 data-icon="inline-start" className="animate-spin" />
-                ) : (
-                  <RefreshCw data-icon="inline-start" />
-                )}
-                检查预发布
+                {allowPrerelease ? "检查含预发布" : "检查稳定版"}
               </Button>
               <Button variant="outline" onClick={downloadUpdate} disabled={!updateState?.canDownload}>
                 <Download data-icon="inline-start" />
@@ -376,6 +417,21 @@ export default function Home() {
                 <ExternalLink data-icon="inline-start" />
                 Release 页面
               </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <SwitchSetting
+                label="自动检查更新"
+                description="打开应用后自动检查一次"
+                checked={autoCheckUpdates}
+                onCheckedChange={setAutoCheckUpdates}
+              />
+              <SwitchSetting
+                label="包含预发布版本"
+                description="检查时允许 beta / rc release"
+                checked={allowPrerelease}
+                onCheckedChange={setAllowPrerelease}
+              />
             </div>
 
             {updateState?.phase === "downloading" || updateState?.phase === "downloaded" ? (
@@ -430,6 +486,59 @@ function formatDateTime(value: string | undefined): string {
 
 function isCheckingUpdate(updateState: DesktopUpdateState | undefined): boolean {
   return !updateState?.canCheck || updateState.phase === "checking";
+}
+
+function readStoredBoolean(key: string, fallback: boolean): boolean {
+  const value = window.localStorage.getItem(key);
+
+  if (value === "true") {
+    return true;
+  }
+
+  if (value === "false") {
+    return false;
+  }
+
+  return fallback;
+}
+
+function SwitchSetting({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2">
+      <div className="min-w-0">
+        <div className="text-sm font-medium">{label}</div>
+        <div className="mt-0.5 truncate text-xs text-muted-foreground">{description}</div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={cn(
+          "relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+          checked ? "border-primary bg-primary" : "border-border bg-muted",
+        )}
+        onClick={() => onCheckedChange(!checked)}
+      >
+        <span
+          className={cn(
+            "absolute top-1/2 left-0.5 size-5 -translate-y-1/2 rounded-full bg-background shadow-sm transition-transform",
+            checked && "translate-x-5",
+          )}
+        />
+      </button>
+    </div>
+  );
 }
 
 function MarkdownNotes({ markdown }: { markdown: string }) {
