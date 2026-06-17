@@ -129,11 +129,23 @@ function validateMetadata(rootDir, relativePaths, matchedFiles, metadata) {
   }
 
   const text = fs.readFileSync(path.join(rootDir, metadataFile), "utf8");
-  const referencedInstaller = [...matchedFiles].find((file) => metadata.references.test(file) && text.includes(path.basename(file)));
+  const referencedInstaller = [...matchedFiles].find(
+    (file) => metadata.references.test(file) && metadataReferencesFile(text, path.basename(file)),
+  );
 
   if (!referencedInstaller) {
     fail(`${metadata.file} does not reference the expected installer artifact.`);
   }
+}
+
+function metadataReferencesFile(text, fileName) {
+  const candidates = new Set([
+    fileName,
+    encodeURI(fileName),
+    encodeURIComponent(fileName),
+  ]);
+
+  return [...candidates].some((candidate) => text.includes(candidate));
 }
 
 function assertNonEmpty(file, label) {
