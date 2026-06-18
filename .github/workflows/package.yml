@@ -66,6 +66,9 @@ jobs:
       - name: Build packages
         run: ${{ matrix.command }}
 
+      - name: Create prerelease update metadata aliases
+        run: node scripts/create-prerelease-update-aliases.mjs --root release
+
       - name: Validate release artifacts
         run: npm run validate:release -- --platform ${{ matrix.platform }} --root release
 

@@ -21,6 +21,18 @@ test("isNewerReleaseVersion compares release tag versions", () => {
   assert.equal(isNewerReleaseVersion("v0.1.0", "v0.1.1"), false);
 });
 
+test("isNewerReleaseVersion compares prerelease versions", () => {
+  assert.equal(isNewerReleaseVersion("v0.1.2-beta.4", "v0.1.2-beta.2"), true);
+  assert.equal(isNewerReleaseVersion("v0.1.2-beta.2", "v0.1.2-beta.4"), false);
+  assert.equal(isNewerReleaseVersion("v0.1.2", "v0.1.2-beta.4"), true);
+  assert.equal(isNewerReleaseVersion("v0.1.2-beta.4", "v0.1.2"), false);
+});
+
+test("isNewerReleaseVersion compares versions with more than three numeric parts", () => {
+  assert.equal(isNewerReleaseVersion("v1.2.3.5", "v1.2.3.4"), true);
+  assert.equal(isNewerReleaseVersion("v1.2.3.4", "v1.2.3.5"), false);
+});
+
 test("normalizeReleaseNotes trims plain release notes", () => {
   assert.equal(normalizeReleaseNotes("  ## 新功能\n\n- 支持应用内更新  "), "## 新功能\n\n- 支持应用内更新");
   assert.equal(normalizeReleaseNotes(null), "");
@@ -40,7 +52,7 @@ test("createInitialUpdateState allows release checks but disables installer acti
   assert.deepEqual(createInitialUpdateState("0.1.1", false), {
     phase: "idle",
     currentVersion: "v0.1.1",
-    supportsUpdates: false,
+    supportsUpdates: true,
     supportsInstall: false,
     canCheck: true,
     canDownload: false,
@@ -68,6 +80,21 @@ test("reduceUpdateState exposes a downloadable update with changelog", () => {
   assert.equal(state.lastCheckedAt, "2026-06-16T10:00:00.000Z");
   assert.equal(state.canDownload, true);
   assert.equal(state.canInstall, false);
+});
+
+test("reduceUpdateState enables download for newer prerelease updates", () => {
+  const state = reduceUpdateState(createInitialUpdateState("0.1.2-beta.2", true), {
+    type: "available",
+    checkedAt: "2026-06-18T10:00:00.000Z",
+    info: {
+      version: "v0.1.2-beta.4",
+      releaseNotes: "测试版更新",
+    },
+  });
+
+  assert.equal(state.phase, "available");
+  assert.equal(state.availableVersion, "v0.1.2-beta.4");
+  assert.equal(state.canDownload, true);
 });
 
 test("reduceUpdateState does not enable download when remote version is not newer", () => {
@@ -153,6 +180,50 @@ test("reduceUpdateState keeps progress and enables install after download", () =
   assert.equal(downloaded.canInstall, true);
   assert.equal(downloaded.canDownload, false);
   assert.equal(downloaded.releaseNotes, "### 0.2.0\n\n安装包已准备好");
+});
+
+test("reduceUpdateState allows download retry after error during downloading", () => {
+  const downloading = reduceUpdateState(createState(), {
+    type: "download-progress",
+    progress: { percent: 30, transferred: 300, total: 1000, bytesPerSecond: 1024 },
+  });
+
+  assert.equal(downloading.phase, "downloading");
+
+  const errored = reduceUpdateState(downloading, {
+    type: "error",
+    message: "更新失败：网络中断。",
+  });
+
+  assert.equal(errored.phase, "error");
+  assert.equal(errored.canDownload, true);
+  assert.equal(errored.canCheck, true);
+  assert.equal(errored.canInstall, false);
+});
+
+test("reduceUpdateState does not allow download retry after error in non-download phases", () => {
+  const checking = reduceUpdateState(createState(), { type: "checking" });
+  const errored = reduceUpdateState(checking, {
+    type: "error",
+    message: "更新失败：网络错误。",
+  });
+
+  assert.equal(errored.canDownload, false);
+});
+
+test("reduceUpdateState reset preserves supportsInstall correctly", () => {
+  const devState = createInitialUpdateState("0.1.1", false);
+  const afterAvailable = reduceUpdateState(devState, {
+    type: "available",
+    checkedAt: "2026-06-18T10:00:00.000Z",
+    info: { version: "v0.2.0", releaseNotes: "新功能" },
+  });
+
+  const reset = reduceUpdateState(afterAvailable, { type: "reset" });
+
+  assert.equal(reset.supportsUpdates, true);
+  assert.equal(reset.supportsInstall, false);
+  assert.equal(reset.phase, "idle");
 });
 
 function createState(): DesktopUpdateState {

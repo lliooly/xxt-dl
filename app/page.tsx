@@ -202,8 +202,21 @@ export default function Home() {
     setUpdateState(state);
   }
 
+  async function cancelUpdateOperation() {
+    const state = await window.xxt.cancelUpdateOperation();
+    setUpdateState(state);
+  }
+
   async function installUpdate() {
     await window.xxt.installUpdate();
+  }
+
+  function closeVersionCard() {
+    if (updateState?.phase === "checking" || updateState?.phase === "downloading") {
+      void cancelUpdateOperation();
+    }
+
+    setVersionCardOpen(false);
   }
 
   function appendLog(message: string) {
@@ -380,7 +393,8 @@ export default function Home() {
           onAllowPrereleaseChange={setAllowPrerelease}
           onAutoCheckUpdatesChange={setAutoCheckUpdates}
           onCheckUpdate={() => checkUpdate(allowPrerelease)}
-          onClose={() => setVersionCardOpen(false)}
+          onClose={closeVersionCard}
+          onCancelUpdate={cancelUpdateOperation}
           onDownloadUpdate={downloadUpdate}
           onInstallUpdate={installUpdate}
         />
@@ -435,6 +449,7 @@ function VersionUpdateModal({
   onAutoCheckUpdatesChange,
   onCheckUpdate,
   onClose,
+  onCancelUpdate,
   onDownloadUpdate,
   onInstallUpdate,
 }: {
@@ -445,6 +460,7 @@ function VersionUpdateModal({
   onAutoCheckUpdatesChange: (checked: boolean) => void;
   onCheckUpdate: () => void;
   onClose: () => void;
+  onCancelUpdate: () => void;
   onDownloadUpdate: () => void;
   onInstallUpdate: () => void;
 }) {
@@ -574,11 +590,30 @@ function VersionUpdateModal({
 
           {updateState?.phase === "downloading" ? (
             <section className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
                 <span>下载进度</span>
-                <strong className="text-foreground">{updateProgressPercent}%</strong>
+                <div className="flex items-center gap-2">
+                  <strong className="text-foreground">{updateProgressPercent}%</strong>
+                  <Button variant="outline" size="sm" onClick={onCancelUpdate}>
+                    <CircleStop data-icon="inline-start" />
+                    取消下载
+                  </Button>
+                </div>
               </div>
               <Progress value={updateProgressPercent} />
+            </section>
+          ) : null}
+
+          {updateState?.phase === "checking" ? (
+            <section className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">正在检查版本</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">如果不想继续等待，可以取消本次检查。</div>
+              </div>
+              <Button variant="outline" onClick={onCancelUpdate}>
+                <CircleStop data-icon="inline-start" />
+                取消检查
+              </Button>
             </section>
           ) : null}
 

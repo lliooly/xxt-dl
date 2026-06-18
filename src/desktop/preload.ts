@@ -19,6 +19,7 @@ export interface XxtDesktopApi {
   getUpdateState: () => Promise<DesktopUpdateState | undefined>;
   checkForUpdates: (input?: CheckForUpdatesInput) => Promise<DesktopUpdateState | undefined>;
   downloadUpdate: () => Promise<DesktopUpdateState | undefined>;
+  cancelUpdateOperation: () => Promise<DesktopUpdateState | undefined>;
   installUpdate: () => Promise<DesktopUpdateState | undefined>;
   openReleasePage: () => Promise<void>;
   onStatus: (callback: (status: DesktopDownloadStatus) => void) => () => void;
@@ -45,6 +46,7 @@ const api: XxtDesktopApi = {
   getUpdateState: () => ipcRenderer.invoke("update:get-state"),
   checkForUpdates: (input = {}) => ipcRenderer.invoke("update:check", input),
   downloadUpdate: () => ipcRenderer.invoke("update:download"),
+  cancelUpdateOperation: () => ipcRenderer.invoke("update:cancel"),
   installUpdate: () => ipcRenderer.invoke("update:install"),
   openReleasePage: () => ipcRenderer.invoke("update:open-release-page"),
   onStatus: (callback) => on("download:status", callback),

@@ -62,7 +62,7 @@ export function createInitialUpdateState(currentVersion: string, supportsInstall
   return {
     phase: "idle",
     currentVersion: formatReleaseVersion(currentVersion),
-    supportsUpdates: supportsInstall,
+    supportsUpdates: true,
     supportsInstall,
     canCheck: true,
     canDownload: false,
@@ -77,20 +77,29 @@ export function formatReleaseVersion(version: string): string {
 }
 
 export function isNewerReleaseVersion(candidate: string, current: string): boolean {
-  const candidateParts = parseVersionParts(candidate);
-  const currentParts = parseVersionParts(current);
+  return compareReleaseVersions(candidate, current) > 0;
+}
 
-  for (let index = 0; index < 3; index += 1) {
-    if (candidateParts[index] > currentParts[index]) {
-      return true;
+export function compareReleaseVersions(left: string, right: string): number {
+  const leftVersion = parseReleaseVersion(left);
+  const rightVersion = parseReleaseVersion(right);
+
+  const length = Math.max(leftVersion.parts.length, rightVersion.parts.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = leftVersion.parts[index] ?? 0;
+    const rightPart = rightVersion.parts[index] ?? 0;
+
+    if (leftPart > rightPart) {
+      return 1;
     }
 
-    if (candidateParts[index] < currentParts[index]) {
-      return false;
+    if (leftPart < rightPart) {
+      return -1;
     }
   }
 
-  return false;
+  return comparePrerelease(leftVersion.prerelease, rightVersion.prerelease);
 }
 
 export function normalizeReleaseNotes(releaseNotes: ReleaseNotesInput): string {
@@ -197,14 +206,15 @@ export function reduceUpdateState(state: DesktopUpdateState, event: DesktopUpdat
         ...state,
         phase: "error",
         canCheck: true,
-        canDownload: state.phase === "available",
+        canDownload:
+          state.supportsInstall && (state.phase === "available" || state.phase === "downloading"),
         canInstall: state.phase === "downloaded",
         error: event.message,
         message: event.message,
       };
 
     case "reset":
-      return createInitialUpdateState(state.currentVersion, state.supportsUpdates);
+      return createInitialUpdateState(state.currentVersion, state.supportsInstall);
   }
 }
 
@@ -220,16 +230,79 @@ function updateInfoFields(info: DesktopUpdateInfo): Pick<
   };
 }
 
-function parseVersionParts(version: string): [number, number, number] {
-  const normalized = formatReleaseVersion(version)
+interface ParsedReleaseVersion {
+  parts: number[];
+  prerelease: string[];
+}
+
+function parseReleaseVersion(version: string): ParsedReleaseVersion {
+  const [core = "", prerelease = ""] = formatReleaseVersion(version)
     .slice(1)
-    .split("-")[0]
+    .split("-", 2);
+  const normalized = core
     .split(".")
     .map((part) => Number.parseInt(part, 10));
 
-  return [
-    Number.isFinite(normalized[0]) ? normalized[0] : 0,
-    Number.isFinite(normalized[1]) ? normalized[1] : 0,
-    Number.isFinite(normalized[2]) ? normalized[2] : 0,
-  ];
+  return {
+    parts: normalized.map((part) => (Number.isFinite(part) ? part : 0)),
+    prerelease: prerelease ? prerelease.split(".") : [],
+  };
+}
+
+function comparePrerelease(candidate: string[], current: string[]): number {
+  if (candidate.length === 0 && current.length === 0) {
+    return 0;
+  }
+
+  if (candidate.length === 0) {
+    return 1;
+  }
+
+  if (current.length === 0) {
+    return -1;
+  }
+
+  const length = Math.max(candidate.length, current.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const candidatePart = candidate[index];
+    const currentPart = current[index];
+
+    if (candidatePart === undefined) {
+      return -1;
+    }
+
+    if (currentPart === undefined) {
+      return 1;
+    }
+
+    const comparison = comparePrereleasePart(candidatePart, currentPart);
+
+    if (comparison !== 0) {
+      return comparison;
+    }
+  }
+
+  return 0;
+}
+
+function comparePrereleasePart(candidate: string, current: string): number {
+  const candidateNumber = Number.parseInt(candidate, 10);
+  const currentNumber = Number.parseInt(current, 10);
+  const candidateIsNumber = String(candidateNumber) === candidate;
+  const currentIsNumber = String(currentNumber) === current;
+
+  if (candidateIsNumber && currentIsNumber) {
+    return Math.sign(candidateNumber - currentNumber);
+  }
+
+  if (candidateIsNumber) {
+    return -1;
+  }
+
+  if (currentIsNumber) {
+    return 1;
+  }
+
+  return candidate.localeCompare(current);
 }

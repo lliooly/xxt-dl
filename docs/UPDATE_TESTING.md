@@ -9,7 +9,7 @@
 一次完整测试至少需要两个都包含更新功能的预发布版本：
 
 ```text
-v0.1.2-beta.3 -> v0.1.2-beta.4
+v0.1.2-beta.2 -> v0.1.2-beta.4
 ```
 
 预发布版本不会被默认稳定版检查命中，只有用户打开「包含预发布版本」开关后才会参与检查。
@@ -19,15 +19,15 @@ v0.1.2-beta.3 -> v0.1.2-beta.4
 在当前更新功能分支上准备第一个测试版本：
 
 ```bash
-npm run release:test-version -- v0.1.2-beta.3
+npm run release:test-version -- v0.1.2-beta.2
 npm run check
 npm test
 npm run build
 git add package.json package-lock.json
-git commit -m "chore(发布): 准备 v0.1.2-beta.3 测试版本"
-git tag v0.1.2-beta.3
+git commit -m "chore(发布): 准备 v0.1.2-beta.2 测试版本"
+git tag v0.1.2-beta.2
 git push
-git push origin v0.1.2-beta.3
+git push origin v0.1.2-beta.2
 ```
 
 等待 GitHub Actions 的 `Package Desktop Apps` workflow 完成，并确认 GitHub Release 中存在对应平台安装包和更新元数据。

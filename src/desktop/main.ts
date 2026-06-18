@@ -127,6 +127,10 @@ ipcMain.handle("update:download", async () => {
   return updateService?.downloadUpdate();
 });
 
+ipcMain.handle("update:cancel", () => {
+  return updateService?.cancelUpdateOperation();
+});
+
 ipcMain.handle("update:install", () => {
   return updateService?.installDownloadedUpdate();
 });
