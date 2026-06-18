@@ -128,24 +128,56 @@ function validateMetadata(rootDir, relativePaths, matchedFiles, metadata) {
     fail(`Missing updater metadata file: ${metadata.file}`);
   }
 
-  const text = fs.readFileSync(path.join(rootDir, metadataFile), "utf8");
+  const metadataPath = path.join(rootDir, metadataFile);
+  const text = fs.readFileSync(metadataPath, "utf8");
   const referencedInstaller = [...matchedFiles].find(
-    (file) => metadata.references.test(file) && metadataReferencesFile(text, path.basename(file)),
+    (file) => metadata.references.test(file) && metadataReferencesFile(text, path.basename(file), metadata.references),
   );
 
   if (!referencedInstaller) {
-    fail(`${metadata.file} does not reference the expected installer artifact.`);
+    fail(`${metadata.file} does not reference the expected installer artifact.\n${metadataDiagnostics(text, matchedFiles)}`);
   }
 }
 
-function metadataReferencesFile(text, fileName) {
+function metadataReferencesFile(text, fileName, expectedPattern) {
   const candidates = new Set([
     fileName,
     encodeURI(fileName),
     encodeURIComponent(fileName),
   ]);
 
-  return [...candidates].some((candidate) => text.includes(candidate));
+  if ([...candidates].some((candidate) => text.includes(candidate))) {
+    return true;
+  }
+
+  const referencedNames = extractMetadataReferences(text);
+  return referencedNames.some((name) => expectedPattern.test(name) || expectedPattern.test(decodeMetadataValue(name)));
+}
+
+function extractMetadataReferences(text) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const match = line.match(/^\s*(?:path|url):\s*['"]?([^'"]+)['"]?\s*$/);
+      return match?.[1]?.trim();
+    })
+    .filter(Boolean);
+}
+
+function decodeMetadataValue(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function metadataDiagnostics(text, matchedFiles) {
+  const references = extractMetadataReferences(text);
+  const fileList = [...matchedFiles].join(", ") || "(none)";
+  const referenceList = references.join(", ") || "(none)";
+
+  return `Matched installers: ${fileList}\nMetadata references: ${referenceList}`;
 }
 
 function assertNonEmpty(file, label) {
