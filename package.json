@@ -1,6 +1,6 @@
 {
   "name": "xxt-dl",
-  "version": "0.1.2-beta.2",
+  "version": "0.1.2-beta.3",
   "description": "Download visible Chaoxing/Xuexitong assignments for personal review.",
   "license": "MIT",
   "author": {
@@ -24,7 +24,9 @@
     "check": "tsc --noEmit",
     "pack": "npm run build --silent && electron-builder --dir",
     "dist": "npm run build --silent && electron-builder --x64 --publish never",
-    "dist:mac": "npm run build --silent && electron-builder --mac dmg --x64 --publish never",
+    "dist:mac": "npm run dist:mac:x64 --silent && npm run dist:mac:arm64 --silent",
+    "dist:mac:x64": "npm run build --silent && electron-builder --mac dmg --x64 --publish never",
+    "dist:mac:arm64": "npm run build --silent && electron-builder --mac dmg --arm64 --publish never",
     "dist:win": "npm run build --silent && electron-builder --win nsis --x64 --publish never",
     "dist:linux": "npm run build --silent && electron-builder --linux AppImage deb --x64 --publish never",
     "validate:release": "node scripts/validate-release-artifacts.mjs",

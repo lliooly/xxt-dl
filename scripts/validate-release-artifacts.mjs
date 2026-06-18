@@ -5,12 +5,23 @@ import path from "node:path";
 import process from "node:process";
 
 const platformRequirements = {
-  macos: {
+  "macos-x64": {
     required: [
-      { label: "macOS DMG installer", pattern: /\.dmg$/ },
+      { label: "macOS x64 DMG installer", pattern: /-mac-x64\.dmg$/ },
       { label: "macOS updater metadata", pattern: /(^|[/\\])latest-mac\.yml$/ },
     ],
-    metadata: { file: "latest-mac.yml", references: /\.dmg$/ },
+    metadata: { file: "latest-mac.yml", references: /-mac-x64\.dmg$/ },
+    forbidden: [
+      { label: "macOS PKG installer", pattern: /\.pkg$/ },
+      { label: "macOS ZIP installer", pattern: /\.zip$/ },
+    ],
+  },
+  "macos-arm64": {
+    required: [
+      { label: "macOS arm64 DMG installer", pattern: /-mac-arm64\.dmg$/ },
+      { label: "macOS updater metadata", pattern: /(^|[/\\])latest-mac\.yml$/ },
+    ],
+    metadata: { file: "latest-mac.yml", references: /-mac-arm64\.dmg$/ },
     forbidden: [
       { label: "macOS PKG installer", pattern: /\.pkg$/ },
       { label: "macOS ZIP installer", pattern: /\.zip$/ },
@@ -40,10 +51,15 @@ const platformRequirements = {
     ],
   },
 };
+const allPlatforms = ["macos-x64", "macos-arm64", "windows", "linux"];
+const platformAliases = {
+  all: allPlatforms,
+  macos: ["macos-x64", "macos-arm64"],
+};
 
 const options = parseArgs(process.argv.slice(2));
 const root = path.resolve(options.root || "release");
-const platforms = options.platform === "all" ? Object.keys(platformRequirements) : [options.platform || currentPlatform()];
+const platforms = resolvePlatforms(options.platform || currentPlatform());
 
 if (!fs.existsSync(root)) {
   fail(`Release artifact directory does not exist: ${root}`);
@@ -56,7 +72,7 @@ for (const platform of platforms) {
   const requirements = platformRequirements[platform];
 
   if (!requirements) {
-    fail(`Unsupported platform "${platform}". Use one of: ${Object.keys(platformRequirements).join(", ")}, all.`);
+    fail(`Unsupported platform "${platform}". Use one of: ${Object.keys(platformRequirements).join(", ")}, macos, all.`);
   }
 
   validatePlatform(root, relativeFiles, requirements);
@@ -94,6 +110,10 @@ function currentPlatform() {
   return "linux";
 }
 
+function resolvePlatforms(platform) {
+  return platformAliases[platform] || [platform];
+}
+
 function validatePlatform(rootDir, relativePaths, requirements) {
   const matchedFiles = new Set();
 
@@ -122,21 +142,25 @@ function validatePlatform(rootDir, relativePaths, requirements) {
 }
 
 function validateMetadata(rootDir, relativePaths, matchedFiles, metadata) {
-  const metadataFile = relativePaths.find((file) => path.basename(file) === metadata.file);
+  const metadataFiles = relativePaths.filter((file) => path.basename(file) === metadata.file);
 
-  if (!metadataFile) {
+  if (metadataFiles.length === 0) {
     fail(`Missing updater metadata file: ${metadata.file}`);
   }
 
-  const metadataPath = path.join(rootDir, metadataFile);
-  const text = fs.readFileSync(metadataPath, "utf8");
-  const referencedInstaller = [...matchedFiles].find(
-    (file) => metadata.references.test(file) && metadataReferencesFile(text, path.basename(file), metadata.references),
-  );
+  for (const metadataFile of metadataFiles) {
+    const metadataPath = path.join(rootDir, metadataFile);
+    const text = fs.readFileSync(metadataPath, "utf8");
+    const referencedInstaller = [...matchedFiles].find(
+      (file) => metadata.references.test(file) && metadataReferencesFile(text, path.basename(file), metadata.references),
+    );
 
-  if (!referencedInstaller) {
-    fail(`${metadata.file} does not reference the expected installer artifact.\n${metadataDiagnostics(text, matchedFiles)}`);
+    if (referencedInstaller) {
+      return;
+    }
   }
+
+  fail(`${metadata.file} does not reference the expected installer artifact.\n${metadataDiagnostics(rootDir, metadataFiles, matchedFiles)}`);
 }
 
 function metadataReferencesFile(text, fileName, expectedPattern) {
@@ -172,8 +196,11 @@ function decodeMetadataValue(value) {
   }
 }
 
-function metadataDiagnostics(text, matchedFiles) {
-  const references = extractMetadataReferences(text);
+function metadataDiagnostics(rootDir, metadataFiles, matchedFiles) {
+  const references = metadataFiles.flatMap((metadataFile) => {
+    const text = fs.readFileSync(path.join(rootDir, metadataFile), "utf8");
+    return extractMetadataReferences(text).map((reference) => `${metadataFile}: ${reference}`);
+  });
   const fileList = [...matchedFiles].join(", ") || "(none)";
   const referenceList = references.join(", ") || "(none)";
 

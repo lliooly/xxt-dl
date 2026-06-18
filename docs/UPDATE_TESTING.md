@@ -9,62 +9,62 @@
 一次完整测试至少需要两个都包含更新功能的预发布版本：
 
 ```text
-v0.1.2-beta.0 -> v0.1.2-beta.1
+v0.1.2-beta.3 -> v0.1.2-beta.4
 ```
 
 预发布版本不会被默认稳定版检查命中，只有用户打开「包含预发布版本」开关后才会参与检查。
 
-## 准备 beta.0
+## 准备第一个 beta 版本
 
 在当前更新功能分支上准备第一个测试版本：
 
 ```bash
-npm run release:test-version -- v0.1.2-beta.0
+npm run release:test-version -- v0.1.2-beta.3
 npm run check
 npm test
 npm run build
 git add package.json package-lock.json
-git commit -m "chore(发布): 准备 v0.1.2-beta.0 测试版本"
-git tag v0.1.2-beta.0
+git commit -m "chore(发布): 准备 v0.1.2-beta.3 测试版本"
+git tag v0.1.2-beta.3
 git push
-git push origin v0.1.2-beta.0
+git push origin v0.1.2-beta.3
 ```
 
 等待 GitHub Actions 的 `Package Desktop Apps` workflow 完成，并确认 GitHub Release 中存在对应平台安装包和更新元数据。
 
-安装 `v0.1.2-beta.0` 的真实包，不要用 `npm run desktop` 测试下载和安装。
+安装第一个 beta 的真实包，不要用 `npm run desktop` 测试下载和安装。
 
-## 准备 beta.1
+## 准备第二个 beta 版本
 
-安装 beta.0 后，再准备第二个测试版本：
+安装第一个 beta 后，再准备第二个测试版本：
 
 ```bash
-npm run release:test-version -- v0.1.2-beta.1
+npm run release:test-version -- v0.1.2-beta.4
 npm run check
 npm test
 npm run build
 git add package.json package-lock.json
-git commit -m "chore(发布): 准备 v0.1.2-beta.1 测试版本"
-git tag v0.1.2-beta.1
+git commit -m "chore(发布): 准备 v0.1.2-beta.4 测试版本"
+git tag v0.1.2-beta.4
 git push
-git push origin v0.1.2-beta.1
+git push origin v0.1.2-beta.4
 ```
 
-等待 GitHub Actions 完成并发布 `v0.1.2-beta.1`。
+等待 GitHub Actions 完成并发布第二个 beta。
 
 ## 桌面端验证
 
-在已安装的 `v0.1.2-beta.0` 中执行：
+在已安装的第一个 beta 中执行：
 
-1. 点击左上角 `XXT DL · v0.1.2-beta.0` 打开版本卡片。
+1. 点击左上角 `XXT DL · 当前版本号` 打开版本卡片。
 2. 打开「包含预发布版本」。
 3. 点击「最新版本」右上角的检查图标。
-4. 确认最新版本显示为 `v0.1.2-beta.1`。
+4. 确认最新版本显示为第二个 beta 版本号。
 5. 点击「下载更新」。
 6. 确认下载进度出现。
 7. 下载完成后确认出现「重启安装」。
 8. 点击「重启安装」。
-9. 应用重新打开后，确认左上角版本变为 `v0.1.2-beta.1`。
+9. 应用重新打开后，确认左上角版本变为第二个 beta 版本号。
 
 ## 平台建议
 
