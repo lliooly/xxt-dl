@@ -1,6 +1,12 @@
 # Dependencies
 node_modules/
 
+# Lockfiles — project uses npm
+pnpm-lock.yaml
+pnpm-workspace.yaml
+yarn.lock
+bun.lockb
+
 # Build output
 dist/
 /.next/
@@ -13,6 +19,9 @@ tsconfig.tsbuildinfo
 
 # Downloaded course/assignment content. May contain private course material.
 /output
+
+# Claude Code local settings
+.claude/
 
 # Local noise
 .DS_Store

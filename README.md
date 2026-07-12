@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/lliooly/xxt-dl?display_name=tag)](https://github.com/lliooly/xxt-dl/releases)
 
-学习通（超星）作业与测验页面整理工具。项目使用 TypeScript、Playwright、Next.js 和 Electron，把当前账号可见的课程作业内容保存为 Markdown、HTML 和结构化 JSON，便于个人复习、搜索和归档。
+学习通（超星）作业与测验页面整理工具。项目使用 TypeScript、Playwright 和 Next.js，把当前账号可见的课程作业内容保存为 Markdown、HTML 和结构化 JSON，便于个人复习、搜索和归档。
 
 > 本项目只读取当前登录账号在浏览器中已经有权限查看的页面，不绕过验证码、权限控制或平台限制。
 
@@ -13,7 +13,7 @@
 - **课程选择：** 支持从个人空间课程列表中选择课程序号或按关键词匹配课程。
 - **作业整理：** 抓取作业、测验、考试等任务详情页，保存原始 HTML 和 Markdown。
 - **题库清洗：** 从页面中提取题目、选项和正确答案，生成清洗后的复习材料。
-- **桌面界面：** 提供 Electron 桌面端，包含扫码登录、课程选择、下载进度和运行日志。
+- **本地 Web：** 提供扫码登录、课程选择、下载进度、运行日志和刷题练习界面。
 - **本地优先：** 登录态、二维码和课程内容默认只保存在本机目录，不上传到远端服务。
 
 ## 项目状态
@@ -33,26 +33,6 @@ v1.0.0 前的重点：
 - 本地 SQLite 题库成为主状态，Markdown、HTML 和 JSON 作为导出产物。
 - 支持云托管 Telegram Bot，让用户在手机端完成练习、答题反馈和错题提醒。
 - AI 与 RAG 能力在题库和练习闭环稳定后逐步接入，并提供明确的隐私开关。
-
-## 获取方式
-
-### 下载桌面端（推荐）
-
-普通用户可以直接从 [GitHub Releases](https://github.com/lliooly/xxt-dl/releases) 下载已经打包好的桌面端程序，不需要本地安装 Node.js 或自行编译。
-
-根据操作系统选择对应文件：
-
-| 系统 | 推荐下载 | 说明 |
-| --- | --- | --- |
-| macOS | `.dmg` 或 `.pkg` | 当前未做代码签名，首次打开时可能需要在系统设置中允许运行 |
-| Windows | `.exe` | NSIS 安装包 |
-| Linux | `.AppImage` 或 `.deb` | 可直接运行 AppImage，Debian / Ubuntu 系可使用 `.deb` |
-
-Release 产物由 `.github/workflows/package.yml` 自动生成：推送 `v*` 标签或手动触发 workflow 后，会在 macOS、Windows、Linux runner 上分别构建并发布安装包。
-
-### 从源码运行 CLI
-
-如果需要调试、二次开发，或希望使用命令行模式，可以克隆仓库后从源码运行。
 
 ## 环境要求
 
@@ -109,17 +89,24 @@ npm start -- --profile .xxt-profile
 npm run clean
 ```
 
-## 本地桌面端开发
+## 本地 Web 界面
 
-启动 Electron 桌面界面：
+普通用户和本地开发建议使用 Web 界面：
 
 ```bash
-npm run desktop
+npm run web
 ```
 
-桌面端使用 Next.js 渲染前端，Electron 主进程在后台启动 Playwright 浏览器。界面会显示扫码登录二维码、课程选择、作业获取进度和运行日志。输出仍然写入 `output/`，登录态仍然保存在 `.xxt-profile/`。
+然后在浏览器打开 <http://localhost:8263>。Web 界面保留完整的扫码登录、课程选择、作业整理和刷题练习流程。Playwright、登录态 `.xxt-profile/` 和题库输出 `output/` 都只保存在运行服务的本机。
 
-如果只是正常使用桌面端，建议优先下载 [GitHub Releases](https://github.com/lliooly/xxt-dl/releases) 中对应系统的安装包。
+同一时间只支持一个整理任务。关闭网页不会立即终止后台任务，重新打开页面可以恢复当前进度；需要停止时请点击页面中的「停止」。
+
+生产模式可以使用：
+
+```bash
+npm run build
+npm run web:start
+```
 
 ## 输出文件
 
@@ -155,19 +142,17 @@ npm run build
 | --- | --- |
 | `npm run check` | 运行 TypeScript 类型检查 |
 | `npm test` | 构建 Node 代码后运行测试 |
-| `npm run build` | 构建 Node 代码、Electron preload 和 Next.js 前端 |
+| `npm run build` | 构建 Node 代码和 Next.js Web 应用 |
+| `npm run web` | 启动本地 Web 开发服务 |
+| `npm run web:start` | 启动已构建的本地 Web 服务 |
 | `npm start` | 构建 CLI 并启动命令行模式 |
-| `npm run desktop` | 构建并启动 Electron 桌面端 |
 | `npm run clean` | 重新生成清洗后的输出内容 |
-| `npm run icons` | 从统一源图重新生成 macOS、Windows 和 Linux 图标 |
-| `npm run pack` | 生成未安装的桌面应用目录 |
-| `npm run dist` | 使用 electron-builder 生成安装包 |
 
 ## 项目结构
 
 ```text
 .
-├── app/                  # Next.js 桌面端界面
+├── app/                  # Next.js 本地 Web 界面和 API
 ├── components/           # UI 组件
 ├── docs/                 # 架构、路线和仓库结构规划
 ├── src/
@@ -179,38 +164,16 @@ npm run build
 │   ├── integrations/     # 未来 Telegram Bot 等集成入口
 │   ├── exporters/        # 未来导出模块边界
 │   ├── shared/           # 未来共享类型与工具边界
+│   ├── web/              # 本地 Web 任务服务和 API 边界
 │   ├── browser.ts        # Playwright 页面读取与保存逻辑
 │   ├── clean.ts          # 题目清洗与复习材料生成
 │   ├── cli.ts            # 命令行入口
-│   ├── core.ts           # 链接识别、课程匹配等核心逻辑
-│   └── desktop/          # Electron 主进程、preload 和桌面下载任务
+│   └── core.ts           # 链接识别、课程匹配等核心逻辑
 ├── test/                 # Node 测试
-├── build/                # 桌面端图标资源，源图和跨平台派生产物
-├── TODO.md               # 版本路线图和待办清单
-└── electron-builder.yml  # 桌面端打包配置
+└── TODO.md               # 版本路线图和待办清单
 ```
 
 后续源码会逐步迁移到 `collector`、`parser`、`library`、`practice`、`cloud`、`integrations`、`exporters` 和 `shared` 等模块，迁移计划见 [docs/REPOSITORY_STRUCTURE.md](./docs/REPOSITORY_STRUCTURE.md)。
-
-## 打包桌面应用
-
-桌面端图标使用 `build/icon.svg` 作为可编辑源文件，`npm run icons` 会生成 `build/icon.png`、`build/icon.ico` 和 `build/icon.icns`，分别用于 Linux、Windows 和 macOS 打包。
-
-本地打包前，建议把 Playwright Chromium 安装到项目依赖目录，便于打进桌面包：
-
-```bash
-PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium
-```
-
-然后按平台打包：
-
-```bash
-npm run dist:mac
-npm run dist:win
-npm run dist:linux
-```
-
-产物会输出到 `release/`。仓库中的 GitHub Actions 会在 macOS、Windows、Linux runner 上分别生成 `.dmg`、`.pkg`、`.exe`、`.AppImage` 和 `.deb`，并发布到 [GitHub Releases](https://github.com/lliooly/xxt-dl/releases)。当前配置不做代码签名，正式分发前可以继续补 Apple Developer 或 Windows 证书。
 
 ## 隐私与安全
 
@@ -218,7 +181,6 @@ npm run dist:linux
 
 - `.xxt-profile/`：Playwright/Chromium 的本地浏览器用户目录，可能包含 cookies、登录态和浏览记录。
 - `output/`：下载后的课程、作业和题库内容，可能包含课程资料、题目、答案或个人学习内容。
-- `release/`：本地打包产物，通常不需要进入源码仓库。
 
 这些目录已经写入 `.gitignore`。推送到 GitHub 或其他远端前，建议运行：
 

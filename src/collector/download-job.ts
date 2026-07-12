@@ -16,7 +16,7 @@ import { combineAssignmentReviews } from "../clean.js";
 import { isReadyToReadUrl, resolveCourseQueryInput, selectCourseEntry } from "../core.js";
 import type { CourseEntry, Link, ManifestItem, SavedLoginQrCode } from "../types.js";
 
-export type DesktopDownloadStatus =
+export type DownloadStatus =
   | "idle"
   | "starting"
   | "waiting-login"
@@ -27,18 +27,18 @@ export type DesktopDownloadStatus =
   | "error"
   | "stopped";
 
-export interface DesktopProgress {
+export interface DownloadProgress {
   current: number;
   total: number;
   label: string;
 }
 
-export interface DesktopDoneResult {
+export interface DownloadDoneResult {
   outDir: string;
   total: number;
 }
 
-export interface DesktopQrCode extends SavedLoginQrCode {
+export interface DownloadQrCode extends SavedLoginQrCode {
   dataUrl?: string;
 }
 
@@ -47,7 +47,7 @@ export interface StartDownloadInput {
   limit?: number;
 }
 
-export interface DesktopDownloadOptions {
+export interface DownloadOptions {
   profileDir: string;
   outDir: string;
   startUrl: string;
@@ -56,24 +56,24 @@ export interface DesktopDownloadOptions {
   headless?: boolean;
 }
 
-export interface DesktopDownloadHandlers {
-  status?: (status: DesktopDownloadStatus) => void;
+export interface DownloadHandlers {
+  status?: (status: DownloadStatus) => void;
   log?: (message: string) => void;
-  qr?: (qr: DesktopQrCode) => void;
+  qr?: (qr: DownloadQrCode) => void;
   courses?: (courses: CourseEntry[]) => void;
-  progress?: (progress: DesktopProgress) => void;
-  done?: (result: DesktopDoneResult) => void;
+  progress?: (progress: DownloadProgress) => void;
+  done?: (result: DownloadDoneResult) => void;
   error?: (message: string) => void;
 }
 
-export class DesktopDownloadJob {
+export class DownloadJob {
   private stopped = false;
   private context?: BrowserContext;
   private courseSelection?: (value: string) => void;
 
   constructor(
-    private readonly options: DesktopDownloadOptions,
-    private readonly handlers: DesktopDownloadHandlers,
+    private readonly options: DownloadOptions,
+    private readonly handlers: DownloadHandlers,
   ) {}
 
   selectCourse(value: string): void {
@@ -289,7 +289,7 @@ export class DesktopDownloadJob {
     this.handlers.done?.({ outDir: this.options.outDir, total: manifest.length });
   }
 
-  private emitStatus(status: DesktopDownloadStatus): void {
+  private emitStatus(status: DownloadStatus): void {
     this.handlers.status?.(status);
   }
 
