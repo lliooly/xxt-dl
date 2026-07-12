@@ -8,7 +8,7 @@
 - `parser/`：题目、选项、答案和来源解析。
 - `library/`：SQLite、本地题库、去重、索引和迁移。
 - `practice/`：随机抽题、判题、错题和掌握度。
-- `desktop/`：Electron 主进程、preload 和 GUI 任务调度。
+- `web/`：本地 Web 任务服务和 API 边界。
 - `cloud/`：云同步、API client 和远端数据模型。
 - `integrations/`：Telegram Bot 等外部训练入口。
 - `exporters/`：Markdown、HTML、JSON、CSV、Anki 等导出。

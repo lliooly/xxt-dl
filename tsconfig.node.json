@@ -10,5 +10,5 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
-  "exclude": ["dist", "out", ".next", "node_modules"]
+  "exclude": ["dist", "out", ".next", "node_modules", "src/practice/question-loader.ts"]
 }
