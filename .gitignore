@@ -23,6 +23,9 @@ tsconfig.tsbuildinfo
 # Claude Code local settings
 .claude/
 
+# Local Git worktrees used for isolated feature development
+.worktrees/
+
 # Local noise
 .DS_Store
 *.log
