@@ -5,6 +5,7 @@ import { ArrowRight, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,9 @@ export function QuizCard({
 }: QuizCardProps) {
   const { question, userAnswer, isCorrect } = qs;
   const isMultiple = question.type === "多选题";
+  const isTextAnswer = question.type === "填空题" || question.options.length === 0;
+  const questionIdentity = `${qs.chapterId}::${question.number}`;
+  const inputIdBase = encodeURIComponent(questionIdentity).replaceAll("%", "");
 
   const selectedForRadio = useMemo(() => {
     if (!userAnswer) return "";
@@ -43,10 +47,12 @@ export function QuizCard({
     return new Set(userAnswer.trim().toUpperCase().replace(/[^A-Z]/g, "").split(""));
   }, [isMultiple, userAnswer]);
   const [selectedMulti, setSelectedMulti] = useState<Set<string>>(answerMulti);
+  const [textAnswer, setTextAnswer] = useState(isTextAnswer ? (userAnswer ?? "") : "");
 
   useEffect(() => {
     setSelectedMulti(answerMulti);
-  }, [answerMulti, qs.chapterId, question.number]);
+    setTextAnswer(isTextAnswer ? (userAnswer ?? "") : "");
+  }, [answerMulti, isTextAnswer, questionIdentity, userAnswer]);
 
   function handleSingleSelect(value: string) {
     if (showResult) return;
@@ -117,7 +123,20 @@ export function QuizCard({
         </div>
 
         {/* Options */}
-        {isMultiple ? (
+        {isTextAnswer ? (
+          <Input
+            value={textAnswer}
+            onChange={(event) => setTextAnswer(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && textAnswer.trim() && !showResult) {
+                onAnswer(textAnswer);
+              }
+            }}
+            placeholder="请输入答案"
+            disabled={showResult}
+            aria-label="填空答案"
+          />
+        ) : isMultiple ? (
           <div className="flex flex-col gap-2">
             {question.options.map((opt, i) => {
               const letter = optionLabels[i];
@@ -125,7 +144,7 @@ export function QuizCard({
               return (
                 <Label
                   key={letter}
-                  htmlFor={`multi-${question.number}-${letter}`}
+                  htmlFor={`multi-${inputIdBase}-${letter}`}
                   data-disabled={showResult || undefined}
                   className={cn(
                     "flex items-start gap-3 rounded-lg border px-4 py-3 text-left text-sm leading-relaxed transition-colors",
@@ -134,12 +153,12 @@ export function QuizCard({
                   )}
                 >
                   <Checkbox
-                    id={`multi-${question.number}-${letter}`}
+                    id={`multi-${inputIdBase}-${letter}`}
                     checked={showResult ? question.correctAnswer.includes(letter) : selectedMulti.has(letter)}
                     disabled={showResult}
                     onCheckedChange={() => handleMultiToggle(letter)}
                   />
-                  <span className="flex-1"><span className="mr-2 font-semibold">{letter}.</span>{opt}</span>
+                  <span className="flex-1"><span className="mr-2 font-semibold">{letter}.</span>{optionContent(opt)}</span>
                   {showResult && selectedMulti.has(letter) && !question.correctAnswer.includes(letter) && <X className="size-4 shrink-0 text-destructive" />}
                 </Label>
               );
@@ -147,7 +166,7 @@ export function QuizCard({
           </div>
         ) : (
           <RadioGroup
-            value={selectedForRadio || undefined}
+            value={selectedForRadio}
             onValueChange={handleSingleSelect}
             className="flex flex-col gap-2"
             disabled={showResult}
@@ -161,7 +180,7 @@ export function QuizCard({
               return (
                 <Label
                   key={letter}
-                  htmlFor={`opt-${question.number}-${letter}`}
+                  htmlFor={`opt-${inputIdBase}-${letter}`}
                   className={cn(
                     "flex items-start gap-3 rounded-lg border px-4 py-3 text-left text-sm leading-relaxed transition-colors",
                     style,
@@ -170,11 +189,14 @@ export function QuizCard({
                 >
                   <RadioGroupItem
                     value={letter}
-                    id={`opt-${question.number}-${letter}`}
+                    id={`opt-${inputIdBase}-${letter}`}
                     className="mt-0.5 shrink-0"
                     disabled={showResult}
                   />
-                  <span className="flex-1">{opt}</span>
+                  <span className="flex-1">
+                    <span className="mr-2 font-semibold">{letter}.</span>
+                    {optionContent(opt)}
+                  </span>
                   {showResult && isCorrectOption && (
                     <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                   )}
@@ -209,6 +231,8 @@ export function QuizCard({
                 </span>
               )}
             </div>
+          ) : isTextAnswer ? (
+            <span className="text-sm text-muted-foreground">请输入答案后提交</span>
           ) : isMultiple ? (
             <span className="text-sm text-muted-foreground">
               {selectedMulti.size > 0 ? `已选 ${selectedMulti.size} 项` : "请选择所有正确答案"}
@@ -226,6 +250,17 @@ export function QuizCard({
                 <ArrowRight data-icon="inline-end" />
               </Button>
             )}
+            {isTextAnswer && !showResult && (
+              <Button
+                variant="default"
+                size="sm"
+                disabled={!textAnswer.trim()}
+                onClick={() => onAnswer(textAnswer)}
+              >
+                提交答案
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            )}
             {isMultiple && !showResult && selectedMulti.size > 0 && (
               <Button variant="default" size="sm" onClick={() => onAnswer([...selectedMulti].sort().join(""))}>
                 确认选择
@@ -237,4 +272,8 @@ export function QuizCard({
       </CardContent>
     </Card>
   );
+}
+
+function optionContent(option: string): string {
+  return option.replace(/^\s*[A-Z]\s*[.．、]\s*/i, "");
 }

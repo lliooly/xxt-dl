@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePracticeData } from "@/src/practice/question-loader";
 import { createSession, createSessionFromQuestions } from "@/src/practice/quiz-engine";
 import type { PracticeChapter, PracticeConfig, PracticeSession, WrongEntry } from "@/src/practice/types";
+import { getWrongCount, getWrongEntriesForReview } from "@/src/practice/wrong-book";
 import type { Question } from "@/src/types";
 import { PracticeDashboard } from "./practice-dashboard";
 import { QuizSession } from "./quiz-session";
@@ -17,6 +18,8 @@ type View =
 export function PracticeView() {
   const { chapters, questionMap, loading, error } = usePracticeData();
   const [view, setView] = useState<View>({ kind: "dashboard" });
+  const [wrongBookRevision, setWrongBookRevision] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
 
   const chapterMap = useMemo(() => {
     const map = new Map<string, { chapter: PracticeChapter; questions: Question[] }>();
@@ -26,6 +29,10 @@ export function PracticeView() {
     }
     return map;
   }, [chapters, questionMap]);
+
+  useEffect(() => {
+    setWrongCount(getWrongCount());
+  }, [view.kind, wrongBookRevision]);
 
   const handleStartSession = useCallback(
     (config: PracticeConfig) => {
@@ -50,15 +57,26 @@ export function PracticeView() {
   }, []);
 
   const handleRestartSession = useCallback(() => {
-    if (view.kind === "quiz") {
-      const session = createSession(view.session.config, chapterMap);
-      if (session.questions.length > 0) {
-        setView({ kind: "quiz", session });
-      }
+    if (view.kind !== "quiz") return;
+
+    const wrongBookQuestions = view.session.config.mode === "wrong-book"
+      ? toSessionQuestions(getWrongEntriesForReview())
+      : [];
+    const session = createSession(
+      view.session.config,
+      chapterMap,
+      wrongBookQuestions,
+    );
+    if (session.questions.length > 0) {
+      setView({ kind: "quiz", session });
+    } else if (view.session.config.mode === "wrong-book") {
+      setWrongBookRevision((revision) => revision + 1);
+      setView({ kind: "wrong-book" });
     }
   }, [view, chapterMap]);
 
   const handleExitQuiz = useCallback(() => {
+    setWrongBookRevision((revision) => revision + 1);
     setView({ kind: "dashboard" });
   }, []);
 
@@ -68,14 +86,15 @@ export function PracticeView() {
         <PracticeDashboard
           chapters={chapters}
           onStartSession={handleStartSession}
-          onStartWrongBookReview={handleStartWrongBookReview}
           onViewWrongBook={() => setView({ kind: "wrong-book" })}
           loading={loading}
+          wrongCount={wrongCount}
         />
       )}
 
       {view.kind === "quiz" && (
         <QuizSession
+          key={view.session.id}
           session={view.session}
           onExit={handleExitQuiz}
           onRestart={handleRestartSession}
@@ -85,7 +104,10 @@ export function PracticeView() {
       {view.kind === "wrong-book" && (
         <WrongBookView
           onStartReview={handleStartWrongBookReview}
-          onExit={() => setView({ kind: "dashboard" })}
+          onExit={() => {
+            setWrongBookRevision((revision) => revision + 1);
+            setView({ kind: "dashboard" });
+          }}
         />
       )}
 
@@ -96,4 +118,12 @@ export function PracticeView() {
       )}
     </div>
   );
+}
+
+function toSessionQuestions(entries: WrongEntry[]) {
+  return entries.map((entry) => ({
+    question: entry.question,
+    chapterId: entry.chapterId,
+    chapterTitle: entry.chapterTitle,
+  }));
 }

@@ -12,24 +12,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { PracticeChapter, PracticeConfig, WrongEntry } from "@/src/practice/types";
-import { getWrongCount } from "@/src/practice/wrong-book";
+import type { PracticeChapter, PracticeConfig } from "@/src/practice/types";
 import { ChapterPicker } from "./chapter-picker";
 
 interface PracticeDashboardProps {
   chapters: PracticeChapter[];
   onStartSession: (config: PracticeConfig) => void;
-  onStartWrongBookReview: (entries: WrongEntry[]) => void;
   onViewWrongBook: () => void;
   loading: boolean;
+  wrongCount: number;
 }
 
 export function PracticeDashboard({
   chapters,
   onStartSession,
-  onStartWrongBookReview,
   onViewWrongBook,
   loading,
+  wrongCount,
 }: PracticeDashboardProps) {
   const [pickingChapters, setPickingChapters] = useState(false);
   const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([]);
@@ -38,8 +37,6 @@ export function PracticeDashboard({
     () => chapters.reduce((sum, ch) => sum + ch.questionCount, 0),
     [chapters],
   );
-
-  const wrongCount = useMemo(() => getWrongCount(), []);
 
   const hasChapters = chapters.length > 0 && totalQuestions > 0;
 
