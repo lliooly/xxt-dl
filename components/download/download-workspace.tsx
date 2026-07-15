@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { postDownloadState, requestDownloadState } from "@/src/web/download-client";
 import type { WebDownloadSnapshot } from "@/src/web/download-task-service";
 
 const idleState: WebDownloadSnapshot = { status: "idle", courses: [], logs: [] };
@@ -43,7 +44,7 @@ export function DownloadWorkspace() {
 
   const refresh = useCallback(async () => {
     try {
-      const next = await requestState();
+      const next = await requestDownloadState();
       setState(next);
       setRequestError("");
     } catch (error) {
@@ -80,7 +81,7 @@ export function DownloadWorkspace() {
   async function start() {
     setRequestError("");
     try {
-      setState(await postState("/api/download/start", {
+      setState(await postDownloadState("/api/download/start", {
         courseQuery: courseQuery.trim() || undefined,
         limit: limit ? Number(limit) : undefined,
       }));
@@ -92,7 +93,7 @@ export function DownloadWorkspace() {
   async function stop() {
     if (!state.taskId) return;
     try {
-      setState(await postState("/api/download/stop", { taskId: state.taskId }));
+      setState(await postDownloadState("/api/download/stop", { taskId: state.taskId }));
       setRequestError("");
     } catch (error) {
       setRequestError(toMessage(error));
@@ -102,7 +103,7 @@ export function DownloadWorkspace() {
   async function chooseCourse() {
     if (!state.taskId) return;
     try {
-      setState(await postState("/api/download/course", { taskId: state.taskId, course: selectedCourse }));
+      setState(await postDownloadState("/api/download/course", { taskId: state.taskId, course: selectedCourse }));
       setRequestError("");
     } catch (error) {
       setRequestError(toMessage(error));
@@ -218,22 +219,6 @@ export function DownloadWorkspace() {
       </section>
     </div>
   );
-}
-
-async function requestState(): Promise<WebDownloadSnapshot> {
-  const response = await fetch("/api/download/state", { cache: "no-store" });
-  return parseResponse(response);
-}
-
-async function postState(url: string, body: unknown): Promise<WebDownloadSnapshot> {
-  const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  return parseResponse(response);
-}
-
-async function parseResponse(response: Response): Promise<WebDownloadSnapshot> {
-  const payload = await response.json() as { state?: WebDownloadSnapshot; error?: string };
-  if (!response.ok || !payload.state) throw new Error(payload.error || "本地服务请求失败。");
-  return payload.state;
 }
 
 function toMessage(error: unknown): string {

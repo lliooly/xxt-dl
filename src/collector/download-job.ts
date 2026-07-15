@@ -66,6 +66,11 @@ export interface DownloadHandlers {
   error?: (message: string) => void;
 }
 
+export type LaunchPersistentContext = (
+  profileDir: string,
+  options: { headless: boolean; viewport: { width: number; height: number } },
+) => Promise<BrowserContext>;
+
 export class DownloadJob {
   private stopped = false;
   private context?: BrowserContext;
@@ -74,6 +79,7 @@ export class DownloadJob {
   constructor(
     private readonly options: DownloadOptions,
     private readonly handlers: DownloadHandlers,
+    private readonly launchContext: LaunchPersistentContext = launchPersistentContext,
   ) {}
 
   selectCourse(value: string): void {
@@ -91,15 +97,15 @@ export class DownloadJob {
     this.emitStatus("starting");
     await fs.ensureDir(this.options.outDir);
 
-    const { chromium } = await import("playwright");
-    this.context = await chromium.launchPersistentContext(this.options.profileDir, {
-      headless: this.options.headless ?? true,
-      viewport: { width: 1400, height: 900 },
-    });
-
-    const page = await this.context.newPage();
-
     try {
+      this.throwIfStopped();
+      this.context = await this.launchContext(this.options.profileDir, {
+        headless: this.options.headless ?? true,
+        viewport: { width: 1400, height: 900 },
+      });
+      this.throwIfStopped();
+      const page = await this.context.newPage();
+
       this.log("正在打开学习通。");
       await page.goto(this.options.startUrl, { waitUntil: "domcontentloaded" });
       this.emitStatus("waiting-login");
@@ -324,4 +330,12 @@ async function writeCombinedReview(outDir: string, manifest: ManifestItem[]): Pr
 async function imageFileToDataUrl(filePath: string): Promise<string> {
   const buffer = await fs.readFile(filePath);
   return `data:image/png;base64,${buffer.toString("base64")}`;
+}
+
+async function launchPersistentContext(
+  profileDir: string,
+  options: { headless: boolean; viewport: { width: number; height: number } },
+): Promise<BrowserContext> {
+  const { chromium } = await import("playwright");
+  return chromium.launchPersistentContext(profileDir, options);
 }

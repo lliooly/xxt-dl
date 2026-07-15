@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { isQuestion, isRecord } from "../shared/validation.js";
 import type { Question } from "../types.js";
 import type { PracticeChapter } from "./types.js";
 
@@ -97,25 +98,8 @@ function isPracticeChapter(value: unknown): value is PracticeChapter {
   );
 }
 
-function isQuestion(value: unknown): value is Question {
-  return (
-    isRecord(value) &&
-    typeof value.number === "string" &&
-    typeof value.type === "string" &&
-    typeof value.stem === "string" &&
-    Array.isArray(value.options) &&
-    value.options.every((option) => typeof option === "string") &&
-    typeof value.correctAnswer === "string" &&
-    typeof value.correctAnswerText === "string"
-  );
-}
-
 function readApiError(value: unknown): string {
   return isRecord(value) && typeof value.error === "string" && value.error.trim()
     ? value.error
     : "题库接口请求失败。";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

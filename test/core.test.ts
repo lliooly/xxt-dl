@@ -13,6 +13,7 @@ import {
   isAssignmentLikeLink,
   isAssignmentTaskLink,
   isCourseEntryLink,
+  normalizeUrl,
   resolveLoginQrImageUrl,
   resolveCourseQueryInput,
   selectCourseEntry,
@@ -258,4 +259,15 @@ test("resolveLoginQrImageUrl resolves Chaoxing QR image src values", () => {
   );
 
   assert.equal(resolveLoginQrImageUrl("javascript:void(0)", "https://passport2.chaoxing.com/login"), "");
+});
+
+test("normalizeUrl rejects non-HTTP absolute protocols", () => {
+  const baseUrl = "https://i.chaoxing.com/base";
+
+  assert.equal(normalizeUrl("httpx://example.test/path", baseUrl), "");
+  assert.equal(normalizeUrl("ftp://example.test/path", baseUrl), "");
+  assert.equal(
+    normalizeUrl("https://mooc1.chaoxing.com/work/list", baseUrl),
+    "https://mooc1.chaoxing.com/work/list",
+  );
 });

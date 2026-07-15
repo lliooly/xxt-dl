@@ -177,7 +177,8 @@ export function normalizeUrl(value: unknown, baseUrl: string): string {
   }
 
   try {
-    return new URL(candidate, baseUrl).href;
+    const url = new URL(candidate, baseUrl);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
   } catch {
     return "";
   }

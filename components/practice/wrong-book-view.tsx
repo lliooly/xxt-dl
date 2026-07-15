@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -19,12 +19,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { formatOptionContent } from "@/src/practice/option-display";
 import type { WrongEntry } from "@/src/practice/types";
 import {
   clearWrongBook,
   getWrongEntries,
-  getWrongCount,
-  getTotalWrongCount,
   removeWrongEntry,
   toggleMastered,
 } from "@/src/practice/wrong-book";
@@ -35,13 +34,17 @@ interface WrongBookViewProps {
 }
 
 export function WrongBookView({ onStartReview, onExit }: WrongBookViewProps) {
-  const [entries, setEntries] = useState<WrongEntry[]>(getWrongEntries);
+  const [entries, setEntries] = useState<WrongEntry[]>([]);
   const [search, setSearch] = useState("");
   const [masteredExpanded, setMasteredExpanded] = useState(false);
 
   const refresh = useCallback(() => {
     setEntries(getWrongEntries());
   }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return entries;
@@ -56,11 +59,6 @@ export function WrongBookView({ onStartReview, onExit }: WrongBookViewProps) {
 
   const activeEntries = useMemo(() => filtered.filter((e) => !e.mastered), [filtered]);
   const masteredEntries = useMemo(() => filtered.filter((e) => e.mastered), [filtered]);
-
-  const nonMasteredForReview = useMemo(
-    () => getWrongEntries().filter((e) => !e.mastered).sort((a, b) => b.timestamp - a.timestamp),
-    [entries],
-  );
 
   function handleRemove(chapterId: string, questionNumber: string) {
     removeWrongEntry(chapterId, questionNumber);
@@ -78,12 +76,11 @@ export function WrongBookView({ onStartReview, onExit }: WrongBookViewProps) {
   }
 
   function handleReviewAll() {
-    const toReview = getWrongEntries().filter((e) => !e.mastered).sort((a, b) => b.timestamp - a.timestamp);
-    onStartReview(toReview);
+    onStartReview(entries.filter((entry) => !entry.mastered));
   }
 
-  const activeCount = getWrongCount();
-  const totalCount = getTotalWrongCount();
+  const activeCount = entries.filter((entry) => !entry.mastered).length;
+  const totalCount = entries.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -267,7 +264,7 @@ function WrongEntryList({
                             !isCorrect && !isUserAnswer && "border-border bg-background text-muted-foreground",
                           )}
                         >
-                          {letter}. {opt}
+                          {letter}. {formatOptionContent(opt)}
                         </span>
                       );
                     })}

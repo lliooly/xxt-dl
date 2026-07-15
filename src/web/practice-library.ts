@@ -2,6 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { PracticeChapter } from "../practice/types.js";
+import { isQuestion } from "../shared/validation.js";
 import type { Question } from "../types.js";
 
 export interface PracticeLibraryPayload {
@@ -71,24 +72,6 @@ async function readQuestionFile(filePath: string, filename: string): Promise<Que
   }
 
   return value;
-}
-
-function isQuestion(value: unknown): value is Question {
-  if (!isRecord(value)) return false;
-
-  return (
-    typeof value.number === "string" &&
-    typeof value.type === "string" &&
-    typeof value.stem === "string" &&
-    Array.isArray(value.options) &&
-    value.options.every((option) => typeof option === "string") &&
-    typeof value.correctAnswer === "string" &&
-    typeof value.correctAnswerText === "string"
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

@@ -15,6 +15,7 @@ import {
   saveAssignmentPage,
   writeDebugSnapshot,
 } from "./browser.js";
+import { parseCliOptions } from "./cli-options.js";
 import { combineAssignmentReviews } from "./clean.js";
 import { isReadyToReadUrl, resolveCourseQueryInput, selectCourseEntry } from "./core.js";
 import type { CourseEntry, FindAssignmentLinksOptions, ManifestItem } from "./types.js";
@@ -23,11 +24,11 @@ import type { Page } from "playwright";
 const DEFAULT_START_URL = "https://i.chaoxing.com/";
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
+  const options = parseCliOptions(process.argv.slice(2));
   const profileDir = path.resolve(options.profile ?? ".xxt-profile");
   const outDir = path.resolve(options.out ?? "output");
   const startUrl = options.url ?? DEFAULT_START_URL;
-  const limit = options.limit ? Number(options.limit) : undefined;
+  const limit = options.limit;
 
   await fs.ensureDir(outDir);
 
@@ -52,7 +53,7 @@ async function main() {
       rl,
       courseQuery: options.course,
     });
-    const selectedLinks = Number.isFinite(limit) ? links.slice(0, limit) : links;
+    const selectedLinks = limit === undefined ? links : links.slice(0, limit);
 
     await fs.writeJson(path.join(outDir, "assignment-links.json"), selectedLinks, {
       spaces: 2,
@@ -223,29 +224,6 @@ async function findAssignmentLinks({ page, context, outDir, rl, courseQuery }: F
   console.log("你可以在打开的浏览器里点到课程内的“作业/考试/测验”页，再按当前流程重新运行。");
   console.log(`已保存课程页调试文件：${path.join(outDir, "debug-page.json")}`);
   return [];
-}
-
-function parseArgs(args: string[]): Record<string, string> {
-  const options: Record<string, string> = {};
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-
-    if (!arg.startsWith("--")) {
-      continue;
-    }
-
-    const [key, inlineValue] = arg.slice(2).split("=", 2);
-    const value = inlineValue ?? args[index + 1] ?? "";
-
-    if (inlineValue === undefined) {
-      index += 1;
-    }
-
-    options[key] = value;
-  }
-
-  return options;
 }
 
 main().catch((error) => {

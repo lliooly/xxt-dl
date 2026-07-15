@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+import { formatOptionContent } from "@/src/practice/option-display";
 import type { QuizQuestionState } from "@/src/practice/types";
 
 interface QuizCardProps {
@@ -158,7 +159,7 @@ export function QuizCard({
                     disabled={showResult}
                     onCheckedChange={() => handleMultiToggle(letter)}
                   />
-                  <span className="flex-1"><span className="mr-2 font-semibold">{letter}.</span>{optionContent(opt)}</span>
+                  <span className="flex-1"><span className="mr-2 font-semibold">{letter}.</span>{formatOptionContent(opt)}</span>
                   {showResult && selectedMulti.has(letter) && !question.correctAnswer.includes(letter) && <X className="size-4 shrink-0 text-destructive" />}
                 </Label>
               );
@@ -195,7 +196,7 @@ export function QuizCard({
                   />
                   <span className="flex-1">
                     <span className="mr-2 font-semibold">{letter}.</span>
-                    {optionContent(opt)}
+                    {formatOptionContent(opt)}
                   </span>
                   {showResult && isCorrectOption && (
                     <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />
@@ -272,8 +273,4 @@ export function QuizCard({
       </CardContent>
     </Card>
   );
-}
-
-function optionContent(option: string): string {
-  return option.replace(/^\s*[A-Z]\s*[.．、]\s*/i, "");
 }

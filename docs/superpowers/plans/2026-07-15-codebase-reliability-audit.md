@@ -315,8 +315,12 @@ function isTextQuestion(question: Question): boolean {
 - 审查：`src/collector/download-job.ts`
 - 创建：`src/cli-options.ts`
 - 创建：`test/cli-options.test.ts`
+- 创建：`test/download-job.test.ts`
+- 创建：`src/web/download-client.ts`
+- 创建：`test/web-download-client.test.ts`
 - 测试：`test/core.test.ts`
 - 测试：`test/clean.test.ts`
+- 测试：`test/practice-wrong-book.test.ts`
 
 - [ ] **步骤 1：逐文件执行审计清单**
 
@@ -347,7 +351,22 @@ test("parseCliOptions rejects invalid or missing limit values", () => {
 
 静态审查若发现 CLI 参数之外的新缺陷，先把精确复现、目标文件和验证命令补入本计划，再进入对应的红—绿修复。对于故意忽略第三方 iframe、截图失败或 `networkidle` 超时的 catch，保留现有容错并补充限定性注释，不把预期降级改成致命错误。
 
-- [ ] **步骤 5：统一涉及文件的代码风格**
+- [ ] **步骤 5：修复静态审查确认的额外缺陷**
+
+1. 在 `test/core.test.ts` 断言 `normalizeUrl("httpx://example.test", baseUrl)` 和 FTP URL 返回空字符串；`src/core.ts` 在构造 `URL` 后只接受 `http:` 与 `https:`。
+2. 在 `test/practice-wrong-book.test.ts` 用纯函数断言 `[null]`、缺少字段和字段类型错误的 localStorage 数据返回空数组；`src/practice/wrong-book.ts` 导出并复用严格的 `parseWrongEntries(raw)`。
+3. 在 `test/download-job.test.ts` 注入一个 `newPage()` 抛错、`close()` 可观测的浏览器上下文，断言 `DownloadJob.run()` 拒绝后仍关闭上下文并发送错误状态；`src/collector/download-job.ts` 把上下文创建和首页创建纳入同一个 `try/catch/finally`。
+4. 在 `test/web-download-client.test.ts` 断言下载 API 的非 JSON、错误响应和缺失状态字段均产生可读错误；`src/web/download-client.ts` 负责响应解析，`components/download/download-workspace.tsx` 不再使用未经校验的类型断言。
+
+分别运行：
+
+```bash
+npm test -- --test-name-pattern="normalizeUrl rejects|parseWrongEntries|closes the browser context|parseDownloadResponse"
+```
+
+预期：新增测试先因现有错误行为失败，最小修复后全部通过。
+
+- [ ] **步骤 6：统一涉及文件的代码风格**
 
 统一类型导入、错误变量类型、换行和辅助函数命名；不对未修改文件进行纯机械格式化，不引入新格式化依赖。
 

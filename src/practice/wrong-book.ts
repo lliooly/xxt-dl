@@ -1,4 +1,5 @@
 import type { Question } from "../types.js";
+import { isQuestion, isRecord } from "../shared/validation.js";
 import type { WrongEntry } from "./types.js";
 
 const STORAGE_KEY = "xxt-dl:wrong-book";
@@ -11,11 +12,17 @@ function hasWindow(): boolean {
 function readStore(): WrongEntry[] {
   if (!hasWindow()) return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
+    return parseWrongEntries(window.localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return [];
+  }
+}
+
+export function parseWrongEntries(raw: string | null): WrongEntry[] {
+  if (!raw) return [];
+  try {
+    const value: unknown = JSON.parse(raw);
+    return Array.isArray(value) && value.every(isWrongEntry) ? value : [];
   } catch {
     return [];
   }
@@ -128,4 +135,20 @@ export function clearWrongBook(): number {
   const count = readStore().length;
   writeStore([]);
   return count;
+}
+
+function isWrongEntry(value: unknown): value is WrongEntry {
+  return (
+    isRecord(value) &&
+    isQuestion(value.question) &&
+    typeof value.chapterId === "string" &&
+    typeof value.chapterTitle === "string" &&
+    typeof value.userAnswer === "string" &&
+    typeof value.timestamp === "number" &&
+    Number.isFinite(value.timestamp) &&
+    typeof value.reviewCount === "number" &&
+    Number.isInteger(value.reviewCount) &&
+    value.reviewCount >= 0 &&
+    typeof value.mastered === "boolean"
+  );
 }
