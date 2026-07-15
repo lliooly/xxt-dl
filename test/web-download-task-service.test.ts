@@ -17,7 +17,10 @@ class FakeJob implements DownloadJob {
     this.resolveRun = resolve;
   });
 
-  constructor(readonly handlers: DownloadHandlers) {}
+  constructor(
+    readonly handlers: DownloadHandlers,
+    private readonly finishOnStop = true,
+  ) {}
 
   run(): Promise<void> {
     return this.runPromise;
@@ -30,7 +33,7 @@ class FakeJob implements DownloadJob {
   async stop(): Promise<void> {
     this.stopped = true;
     this.handlers.status?.("stopped");
-    this.resolveRun();
+    if (this.finishOnStop) this.resolveRun();
   }
 
   finish(): void {
@@ -38,19 +41,29 @@ class FakeJob implements DownloadJob {
   }
 }
 
-function createHarness() {
+function createHarness({ finishOnStop = true } = {}) {
   let job: FakeJob | undefined;
+  let nextTaskId = 1;
   const factory: DownloadJobFactory = (_input, handlers) => {
-    job = new FakeJob(handlers);
+    job = new FakeJob(handlers, finishOnStop);
     return job;
   };
   return {
-    service: new WebDownloadTaskService(factory, () => "task-1"),
+    service: new WebDownloadTaskService(factory, () => `task-${nextTaskId++}`),
     get job() {
       assert.ok(job);
       return job;
     },
   };
+}
+
+function hasCode(code: string) {
+  return (error: unknown) =>
+    error instanceof WebDownloadTaskError && error.code === code;
+}
+
+async function settlePromises(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
 test("WebDownloadTaskService starts idle and records job events", async () => {
@@ -96,6 +109,48 @@ test("WebDownloadTaskService rejects a second active task", () => {
   harness.job.finish();
 });
 
+test("WebDownloadTaskService keeps the lock until run settles after done", async () => {
+  const harness = createHarness();
+  harness.service.start({});
+  const firstJob = harness.job;
+  firstJob.handlers.done?.({ outDir: "/tmp/output", total: 1 });
+
+  assert.throws(() => harness.service.start({}), hasCode("ACTIVE_TASK"));
+
+  firstJob.finish();
+  await settlePromises();
+  assert.equal(harness.service.start({}).taskId, "task-2");
+  harness.job.finish();
+});
+
+test("WebDownloadTaskService keeps the lock until run settles after error", async () => {
+  const harness = createHarness();
+  harness.service.start({});
+  const firstJob = harness.job;
+  firstJob.handlers.error?.("读取失败");
+
+  assert.throws(() => harness.service.start({}), hasCode("ACTIVE_TASK"));
+
+  firstJob.finish();
+  await settlePromises();
+  assert.equal(harness.service.start({}).taskId, "task-2");
+  harness.job.finish();
+});
+
+test("WebDownloadTaskService keeps the lock after stop until run settles", async () => {
+  const harness = createHarness({ finishOnStop: false });
+  harness.service.start({});
+  const firstJob = harness.job;
+
+  await harness.service.stop("task-1");
+  assert.throws(() => harness.service.start({}), hasCode("ACTIVE_TASK"));
+
+  firstJob.finish();
+  await settlePromises();
+  assert.equal(harness.service.start({}).taskId, "task-2");
+  harness.job.finish();
+});
+
 test("WebDownloadTaskService validates task id for course selection and stop", async () => {
   const harness = createHarness();
   harness.service.start({});
@@ -134,6 +189,10 @@ test("WebDownloadTaskService accepts course selection only in the selecting-cour
   );
   harness.service.selectCourse("task-1", "1");
   assert.equal(harness.job.selectedCourse, "1");
+  assert.throws(
+    () => harness.service.selectCourse("task-1", "1"),
+    hasCode("INVALID_STATE"),
+  );
   harness.job.finish();
 });
 

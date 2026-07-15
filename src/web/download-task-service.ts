@@ -55,14 +55,6 @@ export class WebDownloadTaskError extends Error {
   }
 }
 
-const activeStatuses = new Set<DownloadStatus>([
-  "starting",
-  "waiting-login",
-  "selecting-course",
-  "collecting",
-  "downloading",
-]);
-
 export class WebDownloadTaskService {
   private snapshot: WebDownloadSnapshot = createIdleSnapshot();
   private activeJob?: DownloadJob;
@@ -78,8 +70,8 @@ export class WebDownloadTaskService {
   }
 
   start(input: StartDownloadInput): WebDownloadSnapshot {
-    if (this.activeJob && activeStatuses.has(this.snapshot.status)) {
-      throw new WebDownloadTaskError("ACTIVE_TASK", "已有下载任务正在运行。");
+    if (this.activeJob) {
+      throw new WebDownloadTaskError("ACTIVE_TASK", "已有下载任务正在运行或清理中。");
     }
 
     const taskId = this.createTaskId();
@@ -101,7 +93,8 @@ export class WebDownloadTaskService {
       throw error;
     }
     this.activeJob = job;
-    void job.run().catch((error: unknown) => {
+    const runPromise = Promise.resolve().then(() => job.run());
+    void runPromise.catch((error: unknown) => {
       if (this.snapshot.taskId !== taskId || this.snapshot.status === "stopped") {
         return;
       }
@@ -109,7 +102,7 @@ export class WebDownloadTaskService {
       this.snapshot.status = "error";
       this.snapshot.error = this.snapshot.error ?? message;
     }).finally(() => {
-      if (this.snapshot.taskId === taskId) {
+      if (this.snapshot.taskId === taskId && this.activeJob === job) {
         this.activeJob = undefined;
       }
     });
@@ -125,7 +118,15 @@ export class WebDownloadTaskService {
     if (!this.snapshot.courses.some((course) => String(course.index) === value)) {
       throw new WebDownloadTaskError("INVALID_COURSE", "所选课程不在当前课程列表中。");
     }
-    job.selectCourse(value);
+    this.snapshot.status = "collecting";
+    try {
+      job.selectCourse(value);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.snapshot.status = "error";
+      this.snapshot.error = message;
+      throw error;
+    }
     return this.getSnapshot();
   }
 
@@ -134,7 +135,6 @@ export class WebDownloadTaskService {
     await job.stop();
     if (this.snapshot.taskId === taskId) {
       this.snapshot.status = "stopped";
-      this.activeJob = undefined;
     }
     return this.getSnapshot();
   }
