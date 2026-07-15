@@ -27,5 +27,6 @@ tsconfig.tsbuildinfo
 .worktrees/
 
 # Local noise
+.playwright-cli/
 .DS_Store
 *.log
