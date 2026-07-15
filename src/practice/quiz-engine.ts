@@ -19,12 +19,19 @@ function shuffle<T>(array: T[]): T[] {
   return result;
 }
 
-/** Normalise a user answer for comparison: trim, uppercase, sort multi-option chars. */
-function normaliseAnswer(raw: string): string {
+function normaliseChoiceAnswer(raw: string): string {
   return raw
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9对错√×]/g, "");
+}
+
+function normaliseTextAnswer(raw: string): string {
+  return raw.trim().replace(/[\s\u3000]+/gu, " ");
+}
+
+function isTextQuestion(question: Question): boolean {
+  return question.type === "填空题" || question.options.length === 0;
 }
 
 /**
@@ -34,10 +41,27 @@ function normaliseAnswer(raw: string): string {
  * - 判断题: "对"/"错"/"√"/"×" or A/B matching.
  */
 export function checkAnswer(question: Question, userAnswer: string): boolean {
-  const user = normaliseAnswer(userAnswer);
-  const correct = normaliseAnswer(question.correctAnswer);
+  if (isTextQuestion(question)) {
+    const user = normaliseTextAnswer(userAnswer);
+    const correct = normaliseTextAnswer(
+      question.correctAnswer || question.correctAnswerText,
+    );
+    return Boolean(user && correct && user === correct);
+  }
 
-  if (!user) return false;
+  if (question.type === "判断题") {
+    const user = normaliseJudgementAnswer(question, userAnswer);
+    const correct = normaliseJudgementAnswer(
+      question,
+      question.correctAnswer || question.correctAnswerText,
+    );
+    return Boolean(user && correct && user === correct);
+  }
+
+  const user = normaliseChoiceAnswer(userAnswer);
+  const correct = normaliseChoiceAnswer(question.correctAnswer);
+
+  if (!user || !correct) return false;
 
   if (question.type === "多选题") {
     // Order-independent set comparison of individual letters.
@@ -54,9 +78,39 @@ export function checkAnswer(question: Question, userAnswer: string): boolean {
   return user === correct;
 }
 
+function normaliseJudgementAnswer(question: Question, raw: string): string {
+  const direct = judgementToken(raw);
+  if (direct) return direct;
+
+  const choice = normaliseChoiceAnswer(raw);
+  if (/^[A-Z]$/.test(choice)) {
+    const index = choice.charCodeAt(0) - "A".charCodeAt(0);
+    const option = question.options[index];
+    if (option) {
+      const content = option.replace(/^\s*[A-Z]\s*[.．、]\s*/i, "");
+      return judgementToken(content) || choice;
+    }
+  }
+
+  return choice;
+}
+
+function judgementToken(raw: string): string {
+  const value = raw.trim().toUpperCase().replace(/[\s.．、]/g, "");
+  if (["对", "正确", "√", "TRUE", "T"].includes(value)) return "TRUE";
+  if (["错", "错误", "×", "FALSE", "F"].includes(value)) return "FALSE";
+  return "";
+}
+
 // ── session factory ──────────────────────────────────────────────────
 
 let sessionCounter = 0;
+
+export interface SessionQuestionSource {
+  question: Question;
+  chapterId: string;
+  chapterTitle: string;
+}
 
 /**
  * Build a practice session from the given chapters and config.
@@ -65,7 +119,12 @@ let sessionCounter = 0;
 export function createSession(
   config: PracticeConfig,
   chapterMap: Map<string, { chapter: PracticeChapter; questions: Question[] }>,
+  wrongBookQuestions: SessionQuestionSource[] = [],
 ): PracticeSession {
+  if (config.mode === "wrong-book") {
+    return createSessionFromQuestions(wrongBookQuestions, config.shuffle);
+  }
+
   const selected: { chapter: PracticeChapter; questions: Question[] }[] = [];
 
   if (config.mode === "chapter") {
@@ -82,8 +141,6 @@ export function createSession(
       }
     }
   }
-  // "wrong-book" mode is assembled externally (questions already filtered by caller).
-
   const quizQuestions: QuizQuestionState[] = [];
 
   for (const { chapter, questions } of selected) {
@@ -115,7 +172,7 @@ export function createSession(
 
 /** Create a session from a flat list of questions (e.g. wrong-book review). */
 export function createSessionFromQuestions(
-  questions: { question: Question; chapterId: string; chapterTitle: string }[],
+  questions: SessionQuestionSource[],
   shuffleQuestions: boolean,
 ): PracticeSession {
   const quizQuestions: QuizQuestionState[] = questions.map((q) => ({
